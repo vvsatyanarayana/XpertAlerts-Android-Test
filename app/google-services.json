@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "159538781580",
+    "project_id": "xpertalerts-48d6c",
+    "storage_bucket": "xpertalerts-48d6c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:159538781580:android:cc068845d57a49858a4aa9",
+        "android_client_info": {
+          "package_name": "com.aquila.pocxpertalerts"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwdqWt6hAzPj7auh5lrbbZNc0ByGAsXfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
