@@ -18,23 +18,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import com.aquila.pocxpertalerts.navigation.AppNavigation
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
-import com.aquila.pocxpertalerts.ui.screens.HomeScreen
-import com.aquila.pocxpertalerts.ui.screens.LoginScreen
 import kotlinx.coroutines.delay
+
 
 class MainActivity : ComponentActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
         setContent {
+
             XpertAlertsTheme {
+
                 XpertAlertsApp()
             }
         }
     }
 }
+
 
 @Composable
 fun XpertAlertsApp() {
@@ -43,9 +48,6 @@ fun XpertAlertsApp() {
         mutableStateOf(true)
     }
 
-    var showLogin by remember {
-        mutableStateOf(true)
-    }
 
     LaunchedEffect(Unit) {
 
@@ -54,35 +56,17 @@ fun XpertAlertsApp() {
         showSplash = false
     }
 
-    when {
 
-        // Splash Screen
-        showSplash -> {
-            SplashScreen()
-        }
+    if (showSplash) {
 
-        // Login Screen
-        showLogin -> {
-            LoginScreen(
-                onLoginClick = { userId, password ->
+        SplashScreen()
 
-                    // Login API will be added later
-                    showLogin = false
-                },
+    } else {
 
-                onSettingsClick = {
-
-                    // Settings screen will be added later
-                }
-            )
-        }
-
-        // Home Screen
-        else -> {
-            HomeScreen()
-        }
+        AppNavigation()
     }
 }
+
 
 @Composable
 fun SplashScreen() {
@@ -100,7 +84,8 @@ fun SplashScreen() {
                 id = R.drawable.xpertalerts_splash_logo
             ),
 
-            contentDescription = "Xpert Alerts Logo",
+            contentDescription =
+                "Xpert Alerts Logo",
 
             modifier = Modifier.fillMaxSize(),
 
@@ -108,4 +93,3 @@ fun SplashScreen() {
         )
     }
 }
-
