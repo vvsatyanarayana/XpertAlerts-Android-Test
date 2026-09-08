@@ -16,6 +16,7 @@ class LoginRepository(
 
         return try {
 
+            // Get Retrofit using the currently saved server URL
             val apiService =
                 RetrofitClient.getApiService(context)
 

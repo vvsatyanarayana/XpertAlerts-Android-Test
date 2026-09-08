@@ -9,14 +9,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
 
     private const val DEFAULT_BASE_URL =
-        "https://www.xpertalerts.com/ams/webservice/"
+        "https://xpertalerts.com/ams/webservice/"
 
-    /**
-     * Returns the currently configured Web Service URL.
-     *
-     * If the user has not configured a URL yet,
-     * the default Xpert Alerts URL is used.
-     */
     private suspend fun getBaseUrl(
         context: Context
     ): String {
@@ -33,10 +27,6 @@ object RetrofitClient {
         }
     }
 
-
-    /**
-     * Creates ApiService using the saved server URL.
-     */
     suspend fun getApiService(
         context: Context
     ): ApiService {
@@ -44,14 +34,15 @@ object RetrofitClient {
         val baseUrl =
             getBaseUrl(context)
 
+        val finalUrl =
+            if (baseUrl.endsWith("/")) {
+                baseUrl
+            } else {
+                "$baseUrl/"
+            }
+
         return Retrofit.Builder()
-            .baseUrl(
-                if (baseUrl.endsWith("/")) {
-                    baseUrl
-                } else {
-                    "$baseUrl/"
-                }
-            )
+            .baseUrl(finalUrl)
             .addConverterFactory(
                 GsonConverterFactory.create()
             )
