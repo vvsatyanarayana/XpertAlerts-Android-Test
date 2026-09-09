@@ -8,8 +8,15 @@ interface ApiService {
 
     @GET("authenticateUserForDevices")
     suspend fun authenticateUserForDevices(
-        @Query("username") username: String,
-        @Query("password") password: String,
-        @Query("deviceId") deviceId: String
+
+        @Query("username")
+        username: String,
+
+        @Query("password")
+        password: String,
+
+        @Query("deviceId")
+        deviceId: String
+
     ): List<User>
 }

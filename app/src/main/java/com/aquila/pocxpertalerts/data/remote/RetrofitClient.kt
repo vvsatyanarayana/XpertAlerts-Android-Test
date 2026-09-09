@@ -8,41 +8,47 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    private const val DEFAULT_BASE_URL =
-        "https://xpertalerts.com/ams/webservice/"
+    private const val DEFAULT_TEST_URL =
+        "https://www.xpertalerts.com/ams/webservice/check"
 
-    private suspend fun getBaseUrl(
+    // ========================================================
+    // GET API SERVICE
+    // ========================================================
+
+    suspend fun getApiService(
         context: Context
-    ): String {
+    ): ApiService {
 
         val savedUrl =
             SettingsDataStore(context)
                 .webServiceUrl
                 .first()
 
-        return if (!savedUrl.isNullOrBlank()) {
-            savedUrl
-        } else {
-            DEFAULT_BASE_URL
-        }
-    }
-
-    suspend fun getApiService(
-        context: Context
-    ): ApiService {
-
-        val baseUrl =
-            getBaseUrl(context)
-
-        val finalUrl =
-            if (baseUrl.endsWith("/")) {
-                baseUrl
+        val configuredUrl =
+            if (!savedUrl.isNullOrBlank()) {
+                savedUrl
             } else {
-                "$baseUrl/"
+                DEFAULT_TEST_URL
             }
 
+        // ----------------------------------------------------
+        // Convert:
+        //
+        // https://www.xpertalerts.com/ams/webservice/check
+        //
+        // TO:
+        //
+        // https://www.xpertalerts.com/ams/webservice/
+        // ----------------------------------------------------
+
+        val baseUrl =
+            configuredUrl
+                .trimEnd('/')
+                .removeSuffix("/check")
+                .trimEnd('/')
+
         return Retrofit.Builder()
-            .baseUrl(finalUrl)
+            .baseUrl("$baseUrl/")
             .addConverterFactory(
                 GsonConverterFactory.create()
             )

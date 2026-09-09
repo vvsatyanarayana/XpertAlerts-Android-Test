@@ -21,7 +21,6 @@ class SettingsDataStore(
             stringPreferencesKey("web_service_url")
     }
 
-
     // --------------------------------------------------------
     // GET SAVED URL
     // --------------------------------------------------------
@@ -31,7 +30,6 @@ class SettingsDataStore(
 
             preferences[WEB_SERVICE_URL]
         }
-
 
     // --------------------------------------------------------
     // SAVE URL
@@ -46,7 +44,6 @@ class SettingsDataStore(
             preferences[WEB_SERVICE_URL] = url
         }
     }
-
 
     // --------------------------------------------------------
     // CLEAR URL

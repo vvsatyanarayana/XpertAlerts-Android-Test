@@ -147,7 +147,7 @@ class LoginViewModel(
             val result = repository.login(
                 username = username,
                 password = password,
-                deviceId = deviceId
+
             )
 
 

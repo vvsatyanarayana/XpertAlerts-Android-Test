@@ -4,21 +4,23 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+
 data class SettingsUiState(
+
     val webServiceUrl: String =
-        "https://www.xpertalerts.com/ams/webservice/",
+        "https://www.xpertalerts.com/ams/webservice/check",
 
     val testUrl: String =
-        "https://www.xpertalerts.com/ams/webservice/",
+        "https://www.xpertalerts.com/ams/webservice/check",
 
     val isTesting: Boolean = false,
 
@@ -36,10 +38,14 @@ class SettingsViewModel(
 ) : AndroidViewModel(application) {
 
     private val settingsDataStore =
-        SettingsDataStore(application.applicationContext)
+        SettingsDataStore(
+            application.applicationContext
+        )
 
     private val _uiState =
-        MutableStateFlow(SettingsUiState())
+        MutableStateFlow(
+            SettingsUiState()
+        )
 
     val uiState: StateFlow<SettingsUiState> =
         _uiState.asStateFlow()
@@ -48,33 +54,37 @@ class SettingsViewModel(
         loadSavedUrl()
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // LOAD SAVED URL
-    // --------------------------------------------------------
+    // ========================================================
 
     private fun loadSavedUrl() {
 
         viewModelScope.launch {
 
-            settingsDataStore.webServiceUrl.collect { savedUrl ->
+            val savedUrl =
+                settingsDataStore
+                    .webServiceUrl
+                    .first()
 
-                if (!savedUrl.isNullOrBlank()) {
+            if (!savedUrl.isNullOrBlank()) {
 
-                    _uiState.value =
-                        _uiState.value.copy(
-                            webServiceUrl = savedUrl,
-                            testUrl = savedUrl
-                        )
-                }
+                _uiState.value =
+                    _uiState.value.copy(
+                        webServiceUrl = savedUrl,
+                        testUrl = savedUrl
+                    )
             }
         }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // UPDATE URL
-    // --------------------------------------------------------
+    // ========================================================
 
-    fun updateWebServiceUrl(value: String) {
+    fun updateWebServiceUrl(
+        value: String
+    ) {
 
         _uiState.value =
             _uiState.value.copy(
@@ -87,90 +97,109 @@ class SettingsViewModel(
             )
     }
 
-    // --------------------------------------------------------
-    // TEST CONNECTION
-    // --------------------------------------------------------
+    // ========================================================
+    // TEST SERVER CONNECTION
+    // ========================================================
 
     fun startTest() {
 
-        var url = _uiState.value.webServiceUrl.trim()
+        val url =
+            _uiState.value
+                .webServiceUrl
+                .trim()
+
+        // ----------------------------------------------------
+        // EMPTY URL
+        // ----------------------------------------------------
 
         if (url.isBlank()) {
 
-            _uiState.value = _uiState.value.copy(
-                isUrlValid = false,
-                errorMessage = "Please enter a Web Service URL",
-                testSuccess = false
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    isUrlValid = false,
+                    errorMessage =
+                        "Please enter a Web Service URL",
+                    testSuccess = false
+                )
 
             return
         }
+
+        // ----------------------------------------------------
+        // URL VALIDATION
+        // ----------------------------------------------------
 
         if (
             !url.startsWith("http://") &&
             !url.startsWith("https://")
         ) {
-            url = "https://$url"
-        }
 
-        // Remove trailing slash
-        url = url.trimEnd('/')
+            _uiState.value =
+                _uiState.value.copy(
+                    isUrlValid = false,
+                    errorMessage =
+                        "Please enter a valid URL",
+                    testSuccess = false
+                )
+
+            return
+        }
 
         viewModelScope.launch {
 
-            _uiState.value = _uiState.value.copy(
-                isTesting = true,
-                isUrlValid = null,
-                errorMessage = null,
-                testSuccess = false
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    isTesting = true,
+                    isUrlValid = null,
+                    errorMessage = null,
+                    testSuccess = false
+                )
 
             try {
 
-                val result = withContext(Dispatchers.IO) {
+                val responseCode =
+                    withContext(Dispatchers.IO) {
 
-                    val testEndpoint =
-                        "$url/authenticateUserForDevices"
+                        val connection =
+                            URL(url)
+                                .openConnection()
+                                    as HttpURLConnection
 
-                    val connection =
-                        java.net.URL(testEndpoint)
-                            .openConnection()
-                                as java.net.HttpURLConnection
+                        try {
 
-                    connection.requestMethod = "GET"
+                            connection.requestMethod = "GET"
 
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 15000
+                            connection.connectTimeout =
+                                10000
 
-                    connection.setRequestProperty(
-                        "Accept",
-                        "application/json"
-                    )
+                            connection.readTimeout =
+                                10000
 
-                    try {
+                            connection.instanceFollowRedirects =
+                                true
 
-                        connection.connect()
+                            connection.connect()
 
-                        connection.responseCode
+                            connection.responseCode
 
-                    } finally {
+                        } finally {
 
-                        connection.disconnect()
+                            connection.disconnect()
+                        }
                     }
-                }
 
                 // ------------------------------------------------
-                // RESPONSE
+                // ORIGINAL APP EXPECTS HTTP 200
                 // ------------------------------------------------
 
-                if (result in 200..499) {
+                if (responseCode == 200) {
 
                     _uiState.value =
                         _uiState.value.copy(
                             isTesting = false,
                             isUrlValid = true,
-                            testSuccess = true,
-                            errorMessage = null
+                            errorMessage = null,
+                            testSuccess = true
                         )
 
                 } else {
@@ -179,42 +208,42 @@ class SettingsViewModel(
                         _uiState.value.copy(
                             isTesting = false,
                             isUrlValid = false,
-                            testSuccess = false,
                             errorMessage =
-                                "Server returned HTTP $result"
+                                "Server returned HTTP $responseCode",
+                            testSuccess = false
                         )
                 }
 
             } catch (e: Exception) {
 
+                e.printStackTrace()
+
                 _uiState.value =
                     _uiState.value.copy(
                         isTesting = false,
                         isUrlValid = false,
-                        testSuccess = false,
                         errorMessage =
-                            "Connection failed: " +
-                                    "${e.javaClass.simpleName}: " +
-                                    "${e.message ?: "No additional information"}"
+                            "${e.javaClass.simpleName}: ${e.message}",
+                        testSuccess = false
                     )
             }
         }
     }
-    // --------------------------------------------------------
+
+    // ========================================================
     // SAVE URL
-    // --------------------------------------------------------
+    // ========================================================
 
     fun saveUrl() {
 
-        var url =
-            _uiState.value.webServiceUrl.trim()
+        val url =
+            _uiState.value
+                .webServiceUrl
+                .trim()
 
-        if (
-            !url.startsWith("http://") &&
-            !url.startsWith("https://")
-        ) {
-            url = "https://$url"
-        }
+        // ----------------------------------------------------
+        // EMPTY
+        // ----------------------------------------------------
 
         if (url.isBlank()) {
 
@@ -228,11 +257,31 @@ class SettingsViewModel(
             return
         }
 
+        // ----------------------------------------------------
+        // VALIDATE
+        // ----------------------------------------------------
+
+        if (
+            !url.startsWith("http://") &&
+            !url.startsWith("https://")
+        ) {
+
+            _uiState.value =
+                _uiState.value.copy(
+                    errorMessage =
+                        "Please enter a valid URL",
+                    saveSuccess = false
+                )
+
+            return
+        }
+
         viewModelScope.launch {
 
             try {
 
-                settingsDataStore.saveWebServiceUrl(url)
+                settingsDataStore
+                    .saveWebServiceUrl(url)
 
                 _uiState.value =
                     _uiState.value.copy(
@@ -246,19 +295,18 @@ class SettingsViewModel(
 
                 _uiState.value =
                     _uiState.value.copy(
-                        isTesting = false,
-                        isUrlValid = false,
+                        saveSuccess = false,
                         errorMessage =
-                            "Connection failed: ${e.javaClass.simpleName}: ${e.message}",
-                        testSuccess = false
+                            e.message
+                                ?: "Unable to save URL"
                     )
             }
         }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // CLEAR ERROR
-    // --------------------------------------------------------
+    // ========================================================
 
     fun clearError() {
 
