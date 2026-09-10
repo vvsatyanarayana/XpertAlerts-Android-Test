@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
 
-            XpertAlertsTheme {
+                    XpertAlertsTheme {
 
                 XpertAlertsApp()
             }

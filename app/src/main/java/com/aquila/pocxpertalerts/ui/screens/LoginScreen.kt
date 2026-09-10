@@ -23,7 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -102,18 +102,7 @@ fun LoginScreen(
     // LOGIN SUCCESS
     // --------------------------------------------------------
 
-    LaunchedEffect(uiState.loginSuccess) {
 
-        if (uiState.loginSuccess) {
-
-            onLoginClick(
-                uiState.userId,
-                uiState.password
-            )
-
-            viewModel.clearLoginSuccess()
-        }
-    }
 
 
     // ========================================================
@@ -246,8 +235,8 @@ fun LoginScreen(
                 modifier =
                     Modifier.fillMaxWidth(),
 
-                textAlign =
-                    TextAlign.Center,
+                    textAlign =
+                        TextAlign.Center,
 
                 fontSize = 14.sp,
 
@@ -636,7 +625,11 @@ fun LoginScreen(
             Button(
 
                 onClick = {
-                    viewModel.login()
+
+                    onLoginClick(
+                        uiState.userId,
+                        uiState.password
+                    )
                 },
 
                 modifier = Modifier
@@ -759,4 +752,13 @@ fun LoginScreen(
             )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    LoginScreen(
+        onLoginClick = { _, _ -> },
+        onSettingsClick = {}
+    )
 }

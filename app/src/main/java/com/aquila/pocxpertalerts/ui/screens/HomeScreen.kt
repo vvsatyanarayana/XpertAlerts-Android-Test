@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,11 +41,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
-
-// ---------------------------------------------------------
+// =========================================================
 // COLORS
-// ---------------------------------------------------------
+// =========================================================
 
 private val XpertOrange = Color(0xFFED741C)
 private val XpertPurple = Color(0xFF3F237D)
@@ -54,12 +57,19 @@ private val DarkText = Color(0xFF222222)
 private val GrayText = Color(0xFF777777)
 
 
-// ---------------------------------------------------------
+// =========================================================
 // HOME SCREEN
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onAlertClick: (String) -> Unit,
+    onSearchClick: () -> Unit,
+    onArchivedClick: () -> Unit,
+    onProfileClick: () -> Unit,
+    onPasswordClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
 
     var selectedTab by remember {
         mutableIntStateOf(0)
@@ -80,15 +90,16 @@ fun HomeScreen() {
                 .padding(innerPadding)
         ) {
 
-            // -------------------------------------------------
-            // TOP HEADER
-            // -------------------------------------------------
+            // =================================================
+            // HEADER
+            // =================================================
 
             HomeHeader()
 
-            // -------------------------------------------------
+
+            // =================================================
             // MAIN CONTENT
-            // -------------------------------------------------
+            // =================================================
 
             Box(
                 modifier = Modifier
@@ -98,44 +109,39 @@ fun HomeScreen() {
 
                 when (selectedTab) {
 
-                    0 -> AlertsContent()
+                    // ALERTS
+                    0 -> AlertsContent(
+                        onAlertClick = onAlertClick,
+                        onSearchClick = onSearchClick
+                    )
 
+                    // SUBSCRIPTIONS
                     1 -> SubscriptionsContent()
 
+                    // NOTIFICATIONS
                     2 -> NotificationsContent()
-
-                    3 -> AlertsContent()
                 }
             }
 
-            // -------------------------------------------------
+
+            // =================================================
             // MENU
-            // -------------------------------------------------
+            // =================================================
 
             if (showMenu) {
 
                 HomeMenu(
-                    onArchivedClick = {
-                        // Implement later
-                    },
-
-                    onProfileClick = {
-                        // Implement later
-                    },
-
-                    onPasswordClick = {
-                        // Implement later
-                    },
-
-                    onLogoutClick = {
-                        // Implement later
-                    }
+                    onArchivedClick = onArchivedClick,
+                    onProfileClick = onProfileClick,
+                    onPasswordClick = onPasswordClick,
+                    onLogoutClick = onLogoutClick
                 )
             }
 
-            // -------------------------------------------------
+
+            // =================================================
             // BOTTOM NAVIGATION
-            // -------------------------------------------------
+            // =================================================
 
             BottomNavigationBar(
                 selectedTab = selectedTab,
@@ -157,9 +163,9 @@ fun HomeScreen() {
 }
 
 
-// ---------------------------------------------------------
-// TOP HEADER
-// ---------------------------------------------------------
+// =========================================================
+// HEADER
+// =========================================================
 
 @Composable
 private fun HomeHeader() {
@@ -206,7 +212,9 @@ private fun HomeHeader() {
                     painter = painterResource(
                         id = R.drawable.ic_alert_list_bell
                     ),
+
                     contentDescription = "Alerts",
+
                     modifier = Modifier
                         .padding(10.dp)
                         .size(26.dp)
@@ -217,27 +225,35 @@ private fun HomeHeader() {
 }
 
 
-// ---------------------------------------------------------
-// ALERTS CONTENT
-// ---------------------------------------------------------
+// =========================================================
+// ALERTS
+// =========================================================
+
 
 @Composable
-private fun AlertsContent() {
+fun AlertsContent(
+    onAlertClick: (String) -> Unit,
+    onSearchClick: () -> Unit
+) {
 
     val alerts = listOf(
+
         AlertItem(
+            id = "1",
             title = "System Alert",
             description = "New alert received from Xpert Alerts.",
             time = "10 min ago"
         ),
 
         AlertItem(
+            id = "2",
             title = "Important Update",
             description = "Please check your latest notifications.",
             time = "30 min ago"
         ),
 
         AlertItem(
+            id = "3",
             title = "New Information",
             description = "You have a new alert waiting for you.",
             time = "1 hour ago"
@@ -249,7 +265,7 @@ private fun AlertsContent() {
             .fillMaxSize()
             .padding(horizontal = 16.dp),
 
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        contentPadding = PaddingValues(
             top = 18.dp,
             bottom = 20.dp
         ),
@@ -257,14 +273,20 @@ private fun AlertsContent() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
+        // =====================================================
+        // ALERT HEADER
+        // =====================================================
+
         item {
 
-            Text(
-                text = "Alerts",
-                fontSize = 25.sp,
-                fontWeight = FontWeight.Bold,
-                color = DarkText
-            )
+            IconButton(
+                onClick = onSearchClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search Alerts"
+                )
+            }
 
             Spacer(
                 modifier = Modifier.height(4.dp)
@@ -281,34 +303,56 @@ private fun AlertsContent() {
             )
         }
 
-        items(alerts) { alert ->
+
+        // =====================================================
+        // ALERT LIST
+        // =====================================================
+
+        items(
+            items = alerts,
+            key = { alert -> alert.id }
+        ) { alert ->
 
             AlertCard(
-                alert = alert
+                alert = alert,
+
+                onClick = {
+                    onAlertClick(alert.id)
+                }
             )
         }
     }
 }
 
 
-// ---------------------------------------------------------
-// ALERT CARD
-// ---------------------------------------------------------
+// =========================================================
+// ALERT MODEL
+// =========================================================
 
 data class AlertItem(
+    val id: String,
     val title: String,
     val description: String,
     val time: String
 )
 
 
+// =========================================================
+// ALERT CARD
+// =========================================================
+
 @Composable
 private fun AlertCard(
-    alert: AlertItem
+    alert: AlertItem,
+    onClick: () -> Unit
 ) {
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick()
+            },
 
         shape = RoundedCornerShape(16.dp),
 
@@ -328,6 +372,10 @@ private fun AlertCard(
 
             verticalAlignment = Alignment.Top
         ) {
+
+            // =================================================
+            // ALERT ICON
+            // =================================================
 
             Surface(
                 modifier = Modifier.size(46.dp),
@@ -350,9 +398,15 @@ private fun AlertCard(
                 )
             }
 
+
             Spacer(
                 modifier = Modifier.width(14.dp)
             )
+
+
+            // =================================================
+            // ALERT INFORMATION
+            // =================================================
 
             Column(
                 modifier = Modifier.weight(1f)
@@ -391,9 +445,9 @@ private fun AlertCard(
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // SUBSCRIPTIONS
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun SubscriptionsContent() {
@@ -406,9 +460,9 @@ private fun SubscriptionsContent() {
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // NOTIFICATIONS
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun NotificationsContent() {
@@ -421,9 +475,9 @@ private fun NotificationsContent() {
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // EMPTY CONTENT
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun EmptyContent(
@@ -453,7 +507,9 @@ private fun EmptyContent(
             ) {
 
                 Image(
-                    painter = painterResource(id = icon),
+                    painter = painterResource(
+                        id = icon
+                    ),
 
                     contentDescription = title,
 
@@ -488,9 +544,9 @@ private fun EmptyContent(
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // HOME MENU
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun HomeMenu(
@@ -516,11 +572,20 @@ private fun HomeMenu(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
 
+            // =================================================
+            // ARCHIVED
+            // =================================================
+
             MenuItem(
                 icon = R.drawable.archivedalerts,
                 text = "Archived",
                 onClick = onArchivedClick
             )
+
+
+            // =================================================
+            // PROFILE
+            // =================================================
 
             MenuItem(
                 icon = R.drawable.profile,
@@ -528,11 +593,21 @@ private fun HomeMenu(
                 onClick = onProfileClick
             )
 
+
+            // =================================================
+            // PASSWORD
+            // =================================================
+
             MenuItem(
                 icon = R.drawable.changepassword,
                 text = "Password",
                 onClick = onPasswordClick
             )
+
+
+            // =================================================
+            // LOGOUT
+            // =================================================
 
             MenuItem(
                 icon = R.drawable.new_logout,
@@ -546,9 +621,9 @@ private fun HomeMenu(
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // MENU ITEM
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun MenuItem(
@@ -571,7 +646,9 @@ private fun MenuItem(
     ) {
 
         Image(
-            painter = painterResource(id = icon),
+            painter = painterResource(
+                id = icon
+            ),
 
             contentDescription = text,
 
@@ -591,9 +668,9 @@ private fun MenuItem(
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // BOTTOM NAVIGATION
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun BottomNavigationBar(
@@ -616,37 +693,71 @@ private fun BottomNavigationBar(
                 .height(62.dp)
         ) {
 
+            // =================================================
+            // ALERTS TAB
+            // =================================================
+
             BottomTab(
                 icon = R.drawable.ic_alert_list_bell,
-                selected = selectedTab == 0 && !menuSelected,
+
+                selected =
+                    selectedTab == 0 && !menuSelected,
+
                 onClick = {
                     onTabSelected(0)
                 },
+
                 modifier = Modifier.weight(1f)
             )
+
+
+            // =================================================
+            // SUBSCRIPTIONS TAB
+            // =================================================
 
             BottomTab(
                 icon = R.drawable.ic_alert_list_subscription,
-                selected = selectedTab == 1 && !menuSelected,
+
+                selected =
+                    selectedTab == 1 && !menuSelected,
+
                 onClick = {
                     onTabSelected(1)
                 },
+
                 modifier = Modifier.weight(1f)
             )
+
+
+            // =================================================
+            // NOTIFICATIONS TAB
+            // =================================================
 
             BottomTab(
                 icon = R.drawable.ic_alert_list_bel,
-                selected = selectedTab == 2 && !menuSelected,
+
+                selected =
+                    selectedTab == 2 && !menuSelected,
+
                 onClick = {
                     onTabSelected(2)
                 },
+
                 modifier = Modifier.weight(1f)
             )
 
+
+            // =================================================
+            // MENU TAB
+            // =================================================
+
             BottomTab(
                 icon = R.drawable.ic_alert_list_menu,
+
                 selected = menuSelected,
+
                 onClick = onMenuClick,
+
                 modifier = Modifier.weight(1f)
             )
         }
@@ -654,9 +765,9 @@ private fun BottomNavigationBar(
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // BOTTOM TAB
-// ---------------------------------------------------------
+// =========================================================
 
 @Composable
 private fun BottomTab(
@@ -681,7 +792,9 @@ private fun BottomTab(
         )
 
         Image(
-            painter = painterResource(id = icon),
+            painter = painterResource(
+                id = icon
+            ),
 
             contentDescription = null,
 
@@ -709,9 +822,9 @@ private fun BottomTab(
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // PREVIEW
-// ---------------------------------------------------------
+// =========================================================
 
 @Preview(
     showBackground = true,
@@ -723,6 +836,19 @@ private fun BottomTab(
 fun HomeScreenPreview() {
 
     XpertAlertsTheme {
-        HomeScreen()
+
+        HomeScreen(
+            onAlertClick = {},
+            
+            onSearchClick = {},
+
+            onArchivedClick = {},
+
+            onProfileClick = {},
+
+            onPasswordClick = {},
+
+            onLogoutClick = {}
+        )
     }
 }
