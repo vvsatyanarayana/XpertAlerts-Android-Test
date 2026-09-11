@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +46,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 
 // =========================================================
 // COLORS
@@ -229,101 +238,264 @@ private fun HomeHeader() {
 // ALERTS
 // =========================================================
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertsContent(
     onAlertClick: (String) -> Unit,
     onSearchClick: () -> Unit
 ) {
 
+    // =====================================================
+    // MULTI-SELECT STATE
+    // =====================================================
+
+    var selectedAlertIds by remember {
+        mutableStateOf(setOf<String>())
+    }
+
+    val selectionMode =
+        selectedAlertIds.isNotEmpty()
+
+
+// =====================================================
+// PULL TO REFRESH STATE
+// =====================================================
+
+    var isRefreshing by remember {
+        mutableStateOf(false)
+    }
+
+    val refreshState = rememberPullToRefreshState()
+
+// Simulate refresh for UI
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) {
+            delay(1500)
+            isRefreshing = false
+        }
+    }
     val alerts = listOf(
 
         AlertItem(
             id = "1",
-            title = "System Alert",
-            description = "New alert received from Xpert Alerts.",
-            time = "10 min ago"
+            subject = "System Alert",
+            message = "New alert received from Xpert Alerts.",
+            time = "10 min ago",
+            isUnread = true
         ),
 
         AlertItem(
             id = "2",
-            title = "Important Update",
-            description = "Please check your latest notifications.",
-            time = "30 min ago"
+            subject = "System Alert",
+            message = "System maintenance notification received.",
+            time = "25 min ago",
+            isUnread = false
         ),
 
         AlertItem(
             id = "3",
-            title = "New Information",
-            description = "You have a new alert waiting for you.",
-            time = "1 hour ago"
+            subject = "Important Update",
+            message = "Please check your latest notifications.",
+            time = "30 min ago",
+            isUnread = true
+        ),
+
+        AlertItem(
+            id = "4",
+            subject = "New Information",
+            message = "You have a new alert waiting for you.",
+            time = "1 hour ago",
+            isUnread = false
+        ),
+
+        AlertItem(
+            id = "5",
+            subject = "New Information",
+            message = "A new information update is available.",
+            time = "2 hours ago",
+            isUnread = true
         )
     )
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+    // ---------------------------------------------------------
+    // GROUP ALERTS BY SUBJECT
+    // ---------------------------------------------------------
 
-        contentPadding = PaddingValues(
-            top = 18.dp,
-            bottom = 20.dp
-        ),
+    val groupedAlerts = alerts.groupBy {
+        it.subject
+    }
 
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        state = refreshState,
+        onRefresh = {
+            isRefreshing = true
+        }
     ) {
 
-        // =====================================================
-        // ALERT HEADER
-        // =====================================================
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
 
-        item {
+            contentPadding = PaddingValues(
+                top = 18.dp,
+                bottom = 20.dp
+            ),
 
-            IconButton(
-                onClick = onSearchClick
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Alerts"
+            verticalArrangement =
+                Arrangement.spacedBy(10.dp)
+        ) {
+
+            // =====================================================
+            // ALERT HEADER
+            // =====================================================
+
+            item {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween,
+
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Column {
+
+                        Text(
+                            text = "Alerts",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(2.dp)
+                        )
+
+                        Text(
+                            text = "Your latest alerts",
+                            fontSize = 14.sp,
+                            color = GrayText
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onSearchClick
+                    ) {
+
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Alerts",
+                            tint = XpertPurple
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
                 )
             }
 
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
 
-            Text(
-                text = "Your latest alerts",
-                fontSize = 14.sp,
-                color = GrayText
-            )
+            // =====================================================
+            // GROUPED ALERTS
+            // =====================================================
 
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-        }
+            groupedAlerts.forEach { (subject, subjectAlerts) ->
 
+                // -------------------------------------------------
+                // SUBJECT HEADER
+                // -------------------------------------------------
 
-        // =====================================================
-        // ALERT LIST
-        // =====================================================
+                item(
+                    key = "subject_$subject"
+                ) {
 
-        items(
-            items = alerts,
-            key = { alert -> alert.id }
-        ) { alert ->
+                    Text(
+                        text = subject.uppercase(),
 
-            AlertCard(
-                alert = alert,
+                        fontSize = 13.sp,
 
-                onClick = {
-                    onAlertClick(alert.id)
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        color =
+                            XpertPurple,
+
+                        modifier =
+                            Modifier.padding(
+                                top = 8.dp,
+                                bottom = 2.dp
+                            )
+                    )
                 }
-            )
+
+
+                // -------------------------------------------------
+                // MESSAGES
+                // -------------------------------------------------
+
+                items(
+                    items = subjectAlerts,
+
+                    key = { alert ->
+                        alert.id
+                    }
+                ) { alert ->
+
+                    AlertCard(
+                        alert = alert,
+
+                        selected =
+                            selectedAlertIds.contains(
+                                alert.id
+                            ),
+
+                        selectionMode =
+                            selectionMode,
+
+                        onClick = {
+
+                            if (selectionMode) {
+
+                                selectedAlertIds =
+                                    if (
+                                        selectedAlertIds.contains(
+                                            alert.id
+                                        )
+                                    ) {
+                                        selectedAlertIds - alert.id
+                                    } else {
+                                        selectedAlertIds + alert.id
+                                    }
+
+                            } else {
+
+                                onAlertClick(
+                                    alert.id
+                                )
+                            }
+                        },
+
+                        onLongClick = {
+
+                            selectedAlertIds =
+                                selectedAlertIds + alert.id
+                        }
+                    )
+                }
+            }
         }
     }
 }
 
+// =========================================================
+// ALERT MODEL
+// =========================================================
 
 // =========================================================
 // ALERT MODEL
@@ -331,38 +503,58 @@ fun AlertsContent(
 
 data class AlertItem(
     val id: String,
-    val title: String,
-    val description: String,
-    val time: String
+    val subject: String,
+    val message: String,
+    val time: String,
+    val isUnread: Boolean
 )
+
+// =========================================================
+// ALERT CARD
+// =========================================================
 
 
 // =========================================================
 // ALERT CARD
 // =========================================================
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun AlertCard(
     alert: AlertItem,
-    onClick: () -> Unit
+    selected: Boolean,
+    selectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                onClick()
-            },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
 
-        shape = RoundedCornerShape(16.dp),
+        shape =
+            RoundedCornerShape(16.dp),
 
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (selected) {
+                        XpertOrange.copy(
+                            alpha = 0.08f
+                        )
+                    } else {
+                        Color.White
+                    }
+            ),
 
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
+        elevation =
+            CardDefaults.cardElevation(
+                defaultElevation = 2.dp
+            )
     ) {
 
         Row(
@@ -370,37 +562,97 @@ private fun AlertCard(
                 .fillMaxWidth()
                 .padding(16.dp),
 
-            verticalAlignment = Alignment.Top
+            verticalAlignment =
+                Alignment.Top
         ) {
+
+            // =================================================
+            // SELECTION CHECK
+            // =================================================
+
+            if (selectionMode) {
+
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(
+                            color =
+                                if (selected) {
+                                    XpertPurple
+                                } else {
+                                    Color.Transparent
+                                },
+                            shape = CircleShape
+                        ),
+
+                    contentAlignment =
+                        Alignment.Center
+                ) {
+
+                    if (selected) {
+
+                        androidx.compose.material3.Icon(
+                            imageVector =
+                                Icons.Default.Done,
+
+                            contentDescription =
+                                "Selected",
+
+                            tint =
+                                Color.White,
+
+                            modifier =
+                                Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.width(10.dp)
+                )
+            }
+
 
             // =================================================
             // ALERT ICON
             // =================================================
 
             Surface(
-                modifier = Modifier.size(46.dp),
+                modifier =
+                    Modifier.size(46.dp),
 
-                shape = RoundedCornerShape(12.dp),
+                shape =
+                    RoundedCornerShape(12.dp),
 
-                color = XpertOrange.copy(alpha = 0.12f)
+                color =
+                    XpertOrange.copy(
+                        alpha = 0.12f
+                    )
             ) {
 
                 Image(
-                    painter = painterResource(
-                        id = R.drawable.ic_alert_list_bell
-                    ),
+                    painter =
+                        painterResource(
+                            id =
+                                R.drawable
+                                    .ic_alert_list_bell
+                        ),
 
-                    contentDescription = "Alert",
+                    contentDescription =
+                        "Alert",
 
-                    modifier = Modifier
-                        .padding(9.dp)
-                        .size(28.dp)
+                    modifier =
+                        Modifier
+                            .padding(9.dp)
+                            .size(28.dp)
                 )
             }
 
 
             Spacer(
-                modifier = Modifier.width(14.dp)
+                modifier =
+                    Modifier.width(14.dp)
             )
 
 
@@ -409,41 +661,85 @@ private fun AlertCard(
             // =================================================
 
             Column(
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             ) {
 
-                Text(
-                    text = alert.title,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkText
-                )
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text =
+                            alert.message,
+
+                        modifier =
+                            Modifier.weight(1f),
+
+                        fontSize =
+                            14.sp,
+
+                        fontWeight =
+                            if (alert.isUnread) {
+                                FontWeight.Bold
+                            } else {
+                                FontWeight.Normal
+                            },
+
+                        color =
+                            DarkText
+                    )
+
+
+                    // =========================================
+                    // UNREAD INDICATOR
+                    // =========================================
+
+                    if (alert.isUnread) {
+
+                        Spacer(
+                            modifier =
+                                Modifier.width(8.dp)
+                        )
+
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(9.dp)
+                                    .background(
+                                        XpertOrange,
+                                        CircleShape
+                                    )
+                        )
+                    }
+                }
 
                 Spacer(
-                    modifier = Modifier.height(4.dp)
+                    modifier =
+                        Modifier.height(8.dp)
                 )
 
                 Text(
-                    text = alert.description,
-                    fontSize = 14.sp,
-                    color = GrayText
-                )
+                    text =
+                        alert.time,
 
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
+                    fontSize =
+                        12.sp,
 
-                Text(
-                    text = alert.time,
-                    fontSize = 12.sp,
-                    color = XpertOrange,
-                    fontWeight = FontWeight.Medium
+                    color =
+                        XpertOrange,
+
+                    fontWeight =
+                        FontWeight.Medium
                 )
             }
         }
     }
 }
-
 
 // =========================================================
 // SUBSCRIPTIONS

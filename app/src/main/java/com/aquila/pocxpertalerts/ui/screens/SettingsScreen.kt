@@ -92,7 +92,7 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .height(76.dp)
                 .background(
-                    RoyalPurple
+                    XpertOrange
                 )
         ) {
 
@@ -359,7 +359,7 @@ fun SettingsScreen(
                             colors =
                                 ButtonDefaults.buttonColors(
                                     containerColor =
-                                        RoyalPurple,
+                                        XpertOrange,
                                     contentColor =
                                         White
                                 )

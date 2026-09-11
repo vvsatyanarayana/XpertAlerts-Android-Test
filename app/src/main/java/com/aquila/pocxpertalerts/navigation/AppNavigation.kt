@@ -12,7 +12,7 @@ import com.aquila.pocxpertalerts.ui.screens.LoginScreen
 import com.aquila.pocxpertalerts.ui.screens.ProfileScreen
 import com.aquila.pocxpertalerts.ui.screens.SettingsScreen
 import com.aquila.pocxpertalerts.ui.screens.SearchAlertsScreen
-
+import com.aquila.pocxpertalerts.ui.screens.SearchArchivedAlertsScreen
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -39,6 +39,9 @@ sealed class Screen(val route: String) {
     }
 
     data object SearchAlerts : Screen("search_alerts")
+
+    data object SearchArchivedAlerts : Screen("search_archived_alerts")
+
 }
 
 
@@ -56,12 +59,6 @@ fun AppNavigation() {
         startDestination = Screen.Login.route
     ) {
 
-
-        // ====================================================
-        // LOGIN
-        // ====================================================
-
-        // ====================================================
 // LOGIN
 // ====================================================
 
@@ -218,11 +215,20 @@ fun AppNavigation() {
         // ARCHIVED ALERTS
         // ====================================================
 
-        composable(
-            route = Screen.Archived.route
-        ) {
-
-            ArchivedScreen()
+        composable(Screen.Archived.route) {
+            ArchivedScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onSearchClick = {
+                    navController.navigate(Screen.SearchArchivedAlerts.route)
+                },
+                onAlertClick = { alertId ->
+                    navController.navigate(
+                        Screen.AlertDetail.createRoute(alertId)
+                    )
+                }
+            )
         }
 
 
@@ -270,6 +276,23 @@ fun AppNavigation() {
         composable(Screen.SearchAlerts.route) {
 
             SearchAlertsScreen(
+
+                onBackClick = {
+                    navController.popBackStack()
+                },
+
+                onSearchClick = {
+                    navController.popBackStack()
+                }
+            )
+
+        }
+
+
+
+        composable(Screen.SearchArchivedAlerts.route) {
+
+            SearchArchivedAlertsScreen(
 
                 onBackClick = {
                     navController.popBackStack()
