@@ -7,12 +7,18 @@ import androidx.navigation.compose.rememberNavController
 import com.aquila.pocxpertalerts.ui.screens.AlertDetailScreen
 import com.aquila.pocxpertalerts.ui.screens.ArchivedScreen
 import com.aquila.pocxpertalerts.ui.screens.ChangePasswordScreen
+import com.aquila.pocxpertalerts.ui.screens.ForwardAlertDetailsScreen
 import com.aquila.pocxpertalerts.ui.screens.HomeScreen
 import com.aquila.pocxpertalerts.ui.screens.LoginScreen
 import com.aquila.pocxpertalerts.ui.screens.ProfileScreen
 import com.aquila.pocxpertalerts.ui.screens.SettingsScreen
 import com.aquila.pocxpertalerts.ui.screens.SearchAlertsScreen
 import com.aquila.pocxpertalerts.ui.screens.SearchArchivedAlertsScreen
+import com.aquila.pocxpertalerts.ui.screens.SubscriptionsScreen
+import com.aquila.pocxpertalerts.ui.screens.SubscriptionDetailsScreen
+import com.aquila.pocxpertalerts.ui.screens.ForwardAlertsScreen
+import com.aquila.pocxpertalerts.ui.screens.SearchForwardAlertsScreen
+
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -42,6 +48,15 @@ sealed class Screen(val route: String) {
 
     data object SearchArchivedAlerts : Screen("search_archived_alerts")
 
+    data object Subscriptions : Screen("subscriptions")
+
+    data object SubscriptionDetails : Screen("subscription_details")
+
+    data object ForwardAlerts : Screen("forward_alerts")
+
+    data object ForwardAlertDetails : Screen("forward_alert_details")
+
+    data object SearchForwardAlerts : Screen("search_forward_alerts")
 }
 
 
@@ -98,86 +113,56 @@ fun AppNavigation() {
 // ====================================================
 // HOME
 // ====================================================
-
         composable(Screen.Home.route) {
 
             HomeScreen(
 
-                // --------------------------------------------
-                // ALERT CLICK
-                // --------------------------------------------
-
                 onAlertClick = { alertId ->
-
                     navController.navigate(
-                        Screen.AlertDetail.createRoute(
-                            alertId
-                        )
+                        Screen.AlertDetail.createRoute(alertId)
                     )
                 },
 
-
-                // --------------------------------------------
-                // SEARCH ALERTS
-                // --------------------------------------------
-
                 onSearchClick = {
-
                     navController.navigate(
                         Screen.SearchAlerts.route
                     )
                 },
 
-
-                // --------------------------------------------
-                // ARCHIVED
-                // --------------------------------------------
+                onSubscriptionsClick = {
+                    navController.navigate(
+                        Screen.Subscriptions.route
+                    )
+                },
 
                 onArchivedClick = {
-
                     navController.navigate(
                         Screen.Archived.route
                     )
                 },
 
-
-                // --------------------------------------------
-                // PROFILE
-                // --------------------------------------------
-
+                onForwardAlertsClick = {
+                    navController.navigate(
+                        Screen.ForwardAlerts.route
+                    )
+                },
                 onProfileClick = {
-
                     navController.navigate(
                         Screen.Profile.route
                     )
                 },
 
-
-                // --------------------------------------------
-                // CHANGE PASSWORD
-                // --------------------------------------------
-
                 onPasswordClick = {
-
                     navController.navigate(
                         Screen.ChangePassword.route
                     )
                 },
 
-
-                // --------------------------------------------
-                // LOGOUT
-                // --------------------------------------------
-
                 onLogoutClick = {
-
                     navController.navigate(
                         Screen.Login.route
                     ) {
-
-                        popUpTo(
-                            Screen.Home.route
-                        ) {
+                        popUpTo(Screen.Home.route) {
                             inclusive = true
                         }
                     }
@@ -298,6 +283,72 @@ fun AppNavigation() {
                     navController.popBackStack()
                 },
 
+                onSearchClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.Subscriptions.route) {
+            SubscriptionsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onCreateClick = {
+                    navController.navigate(Screen.SubscriptionDetails.route)
+                },
+                onEditClick = { subscriptionId ->
+                    // Edit Subscription screen will be connected next
+                }
+            )
+        }
+
+
+        composable(Screen.SubscriptionDetails.route) {
+            SubscriptionDetailsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onSaveClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Screen.ForwardAlerts.route) {
+            ForwardAlertsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onCreateClick = {
+                    navController.navigate(Screen.ForwardAlertDetails.route)
+                },
+                onEditClick = { forwardAlertId ->
+                    navController.navigate(Screen.ForwardAlertDetails.route)
+                },
+                onSearchClick = {
+                    navController.navigate(Screen.SearchForwardAlerts.route)
+                }
+            )
+        }
+
+        composable(Screen.ForwardAlertDetails.route) {
+
+            ForwardAlertDetailsScreen(
+
+                onBackClick = {
+                    navController.popBackStack()
+                },
+
+                onSaveClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Screen.SearchForwardAlerts.route) {
+            SearchForwardAlertsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
                 onSearchClick = {
                     navController.popBackStack()
                 }

@@ -3,6 +3,7 @@ package com.aquila.pocxpertalerts.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +21,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,18 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Done
+
 
 // =========================================================
 // COLORS
@@ -74,7 +74,9 @@ private val GrayText = Color(0xFF777777)
 fun HomeScreen(
     onAlertClick: (String) -> Unit,
     onSearchClick: () -> Unit,
+    onSubscriptionsClick: () -> Unit,
     onArchivedClick: () -> Unit,
+    onForwardAlertsClick: () -> Unit,
     onProfileClick: () -> Unit,
     onPasswordClick: () -> Unit,
     onLogoutClick: () -> Unit
@@ -87,6 +89,7 @@ fun HomeScreen(
     var showMenu by remember {
         mutableStateOf(false)
     }
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -118,16 +121,20 @@ fun HomeScreen(
 
                 when (selectedTab) {
 
+                    // =================================================
                     // ALERTS
+                    // =================================================
+
                     0 -> AlertsContent(
                         onAlertClick = onAlertClick,
                         onSearchClick = onSearchClick
                     )
 
-                    // SUBSCRIPTIONS
-                    1 -> SubscriptionsContent()
 
+                    // =================================================
                     // NOTIFICATIONS
+                    // =================================================
+
                     2 -> NotificationsContent()
                 }
             }
@@ -141,6 +148,7 @@ fun HomeScreen(
 
                 HomeMenu(
                     onArchivedClick = onArchivedClick,
+                    onForwardAlertsClick = onForwardAlertsClick,
                     onProfileClick = onProfileClick,
                     onPasswordClick = onPasswordClick,
                     onLogoutClick = onLogoutClick
@@ -158,8 +166,16 @@ fun HomeScreen(
 
                 onTabSelected = { tab ->
 
-                    selectedTab = tab
-                    showMenu = false
+                    if (tab == 1) {
+
+                        // Open separate Subscriptions screen
+                        onSubscriptionsClick()
+
+                    } else {
+
+                        selectedTab = tab
+                        showMenu = false
+                    }
                 },
 
                 onMenuClick = {
@@ -257,23 +273,37 @@ fun AlertsContent(
         selectedAlertIds.isNotEmpty()
 
 
-// =====================================================
-// PULL TO REFRESH STATE
-// =====================================================
+    // =====================================================
+    // PULL TO REFRESH STATE
+    // =====================================================
 
     var isRefreshing by remember {
         mutableStateOf(false)
     }
 
-    val refreshState = rememberPullToRefreshState()
+    val refreshState =
+        rememberPullToRefreshState()
 
-// Simulate refresh for UI
+
+    // =====================================================
+    // SIMULATE REFRESH FOR UI
+    // =====================================================
+
     LaunchedEffect(isRefreshing) {
+
         if (isRefreshing) {
+
             delay(1500)
+
             isRefreshing = false
         }
     }
+
+
+    // =====================================================
+    // MOCK ALERT DATA
+    // =====================================================
+
     val alerts = listOf(
 
         AlertItem(
@@ -317,17 +347,25 @@ fun AlertsContent(
         )
     )
 
-    // ---------------------------------------------------------
-    // GROUP ALERTS BY SUBJECT
-    // ---------------------------------------------------------
 
-    val groupedAlerts = alerts.groupBy {
-        it.subject
-    }
+    // =====================================================
+    // GROUP ALERTS BY SUBJECT
+    // =====================================================
+
+    val groupedAlerts =
+        alerts.groupBy {
+            it.subject
+        }
+
+
+    // =====================================================
+    // PULL TO REFRESH
+    // =====================================================
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         state = refreshState,
+
         onRefresh = {
             isRefreshing = true
         }
@@ -347,9 +385,9 @@ fun AlertsContent(
                 Arrangement.spacedBy(10.dp)
         ) {
 
-            // =====================================================
+            // =================================================
             // ALERT HEADER
-            // =====================================================
+            // =================================================
 
             item {
 
@@ -373,7 +411,8 @@ fun AlertsContent(
                         )
 
                         Spacer(
-                            modifier = Modifier.height(2.dp)
+                            modifier =
+                                Modifier.height(2.dp)
                         )
 
                         Text(
@@ -383,42 +422,55 @@ fun AlertsContent(
                         )
                     }
 
+
+                    // =================================================
+                    // SEARCH
+                    // =================================================
+
                     IconButton(
                         onClick = onSearchClick
                     ) {
 
                         Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search Alerts",
-                            tint = XpertPurple
+                            imageVector =
+                                Icons.Default.Search,
+
+                            contentDescription =
+                                "Search Alerts",
+
+                            tint =
+                                XpertPurple
                         )
                     }
                 }
 
                 Spacer(
-                    modifier = Modifier.height(8.dp)
+                    modifier =
+                        Modifier.height(8.dp)
                 )
             }
 
 
-            // =====================================================
+            // =================================================
             // GROUPED ALERTS
-            // =====================================================
+            // =================================================
 
             groupedAlerts.forEach { (subject, subjectAlerts) ->
 
-                // -------------------------------------------------
+                // =================================================
                 // SUBJECT HEADER
-                // -------------------------------------------------
+                // =================================================
 
                 item(
                     key = "subject_$subject"
                 ) {
 
                     Text(
-                        text = subject.uppercase(),
+                        text =
+                            subject.uppercase(),
 
-                        fontSize = 13.sp,
+                        fontSize =
+                            13.sp,
 
                         fontWeight =
                             FontWeight.Bold,
@@ -435,9 +487,9 @@ fun AlertsContent(
                 }
 
 
-                // -------------------------------------------------
-                // MESSAGES
-                // -------------------------------------------------
+                // =================================================
+                // ALERT MESSAGES
+                // =================================================
 
                 items(
                     items = subjectAlerts,
@@ -468,9 +520,14 @@ fun AlertsContent(
                                             alert.id
                                         )
                                     ) {
-                                        selectedAlertIds - alert.id
+
+                                        selectedAlertIds -
+                                                alert.id
+
                                     } else {
-                                        selectedAlertIds + alert.id
+
+                                        selectedAlertIds +
+                                                alert.id
                                     }
 
                             } else {
@@ -484,7 +541,8 @@ fun AlertsContent(
                         onLongClick = {
 
                             selectedAlertIds =
-                                selectedAlertIds + alert.id
+                                selectedAlertIds +
+                                        alert.id
                         }
                     )
                 }
@@ -493,9 +551,6 @@ fun AlertsContent(
     }
 }
 
-// =========================================================
-// ALERT MODEL
-// =========================================================
 
 // =========================================================
 // ALERT MODEL
@@ -508,10 +563,6 @@ data class AlertItem(
     val time: String,
     val isUnread: Boolean
 )
-
-// =========================================================
-// ALERT CARD
-// =========================================================
 
 
 // =========================================================
@@ -543,10 +594,13 @@ private fun AlertCard(
             CardDefaults.cardColors(
                 containerColor =
                     if (selected) {
+
                         XpertOrange.copy(
                             alpha = 0.08f
                         )
+
                     } else {
+
                         Color.White
                     }
             ),
@@ -578,11 +632,16 @@ private fun AlertCard(
                         .background(
                             color =
                                 if (selected) {
+
                                     XpertPurple
+
                                 } else {
+
                                     Color.Transparent
                                 },
-                            shape = CircleShape
+
+                            shape =
+                                CircleShape
                         ),
 
                     contentAlignment =
@@ -591,7 +650,7 @@ private fun AlertCard(
 
                     if (selected) {
 
-                        androidx.compose.material3.Icon(
+                        Icon(
                             imageVector =
                                 Icons.Default.Done,
 
@@ -685,8 +744,11 @@ private fun AlertCard(
 
                         fontWeight =
                             if (alert.isUnread) {
+
                                 FontWeight.Bold
+
                             } else {
+
                                 FontWeight.Normal
                             },
 
@@ -695,9 +757,9 @@ private fun AlertCard(
                     )
 
 
-                    // =========================================
+                    // =================================================
                     // UNREAD INDICATOR
-                    // =========================================
+                    // =================================================
 
                     if (alert.isUnread) {
 
@@ -718,10 +780,12 @@ private fun AlertCard(
                     }
                 }
 
+
                 Spacer(
                     modifier =
                         Modifier.height(8.dp)
                 )
+
 
                 Text(
                     text =
@@ -741,20 +805,6 @@ private fun AlertCard(
     }
 }
 
-// =========================================================
-// SUBSCRIPTIONS
-// =========================================================
-
-@Composable
-private fun SubscriptionsContent() {
-
-    EmptyContent(
-        icon = R.drawable.ic_alert_list_subscription,
-        title = "Subscriptions",
-        description = "Your subscribed alerts will appear here."
-    )
-}
-
 
 // =========================================================
 // NOTIFICATIONS
@@ -764,9 +814,14 @@ private fun SubscriptionsContent() {
 private fun NotificationsContent() {
 
     EmptyContent(
-        icon = R.drawable.ic_alert_list_bel,
-        title = "Notifications",
-        description = "Your notifications will appear here."
+        icon =
+            R.drawable.ic_alert_list_bel,
+
+        title =
+            "Notifications",
+
+        description =
+            "Your notifications will appear here."
     )
 }
 
@@ -787,53 +842,81 @@ private fun EmptyContent(
             .fillMaxSize()
             .padding(24.dp),
 
-        contentAlignment = Alignment.Center
+        contentAlignment =
+            Alignment.Center
     ) {
 
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment =
+                Alignment.CenterHorizontally
         ) {
 
             Surface(
-                modifier = Modifier.size(80.dp),
+                modifier =
+                    Modifier.size(80.dp),
 
-                shape = RoundedCornerShape(24.dp),
+                shape =
+                    RoundedCornerShape(24.dp),
 
-                color = XpertOrange.copy(alpha = 0.10f)
+                color =
+                    XpertOrange.copy(
+                        alpha = 0.10f
+                    )
             ) {
 
                 Image(
-                    painter = painterResource(
-                        id = icon
-                    ),
+                    painter =
+                        painterResource(
+                            id = icon
+                        ),
 
-                    contentDescription = title,
+                    contentDescription =
+                        title,
 
-                    modifier = Modifier
-                        .padding(20.dp)
-                        .size(40.dp)
+                    modifier =
+                        Modifier
+                            .padding(20.dp)
+                            .size(40.dp)
                 )
             }
 
-            Spacer(
-                modifier = Modifier.height(18.dp)
-            )
-
-            Text(
-                text = title,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = DarkText
-            )
 
             Spacer(
-                modifier = Modifier.height(6.dp)
+                modifier =
+                    Modifier.height(18.dp)
             )
 
+
             Text(
-                text = description,
-                fontSize = 14.sp,
-                color = GrayText
+                text =
+                    title,
+
+                fontSize =
+                    22.sp,
+
+                fontWeight =
+                    FontWeight.Bold,
+
+                color =
+                    DarkText
+            )
+
+
+            Spacer(
+                modifier =
+                    Modifier.height(6.dp)
+            )
+
+
+            Text(
+                text =
+                    description,
+
+                fontSize =
+                    14.sp,
+
+                color =
+                    GrayText
             )
         }
     }
@@ -847,6 +930,7 @@ private fun EmptyContent(
 @Composable
 private fun HomeMenu(
     onArchivedClick: () -> Unit,
+    onForwardAlertsClick: () -> Unit,
     onProfileClick: () -> Unit,
     onPasswordClick: () -> Unit,
     onLogoutClick: () -> Unit
@@ -860,12 +944,14 @@ private fun HomeMenu(
 
         HorizontalDivider()
 
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 10.dp),
 
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement =
+                Arrangement.SpaceEvenly
         ) {
 
             // =================================================
@@ -873,9 +959,30 @@ private fun HomeMenu(
             // =================================================
 
             MenuItem(
-                icon = R.drawable.archivedalerts,
-                text = "Archived",
-                onClick = onArchivedClick
+                icon =
+                    R.drawable.archivedalerts,
+
+                text =
+                    "Archived",
+
+                onClick =
+                    onArchivedClick
+            )
+
+
+            // =================================================
+            // FORWARD ALERTS
+            // =================================================
+
+            MenuItem(
+                icon =
+                    R.drawable.ic_alert_list_bell,
+
+                text =
+                    "Forward",
+
+                onClick =
+                    onForwardAlertsClick
             )
 
 
@@ -884,9 +991,14 @@ private fun HomeMenu(
             // =================================================
 
             MenuItem(
-                icon = R.drawable.profile,
-                text = "Profile",
-                onClick = onProfileClick
+                icon =
+                    R.drawable.profile,
+
+                text =
+                    "Profile",
+
+                onClick =
+                    onProfileClick
             )
 
 
@@ -895,9 +1007,14 @@ private fun HomeMenu(
             // =================================================
 
             MenuItem(
-                icon = R.drawable.changepassword,
-                text = "Password",
-                onClick = onPasswordClick
+                icon =
+                    R.drawable.changepassword,
+
+                text =
+                    "Password",
+
+                onClick =
+                    onPasswordClick
             )
 
 
@@ -906,11 +1023,17 @@ private fun HomeMenu(
             // =================================================
 
             MenuItem(
-                icon = R.drawable.new_logout,
-                text = "Logout",
-                onClick = onLogoutClick
+                icon =
+                    R.drawable.new_logout,
+
+                text =
+                    "Logout",
+
+                onClick =
+                    onLogoutClick
             )
         }
+
 
         HorizontalDivider()
     }
@@ -934,31 +1057,43 @@ private fun MenuItem(
                 onClick()
             }
             .padding(
-                horizontal = 10.dp,
+                horizontal = 8.dp,
                 vertical = 6.dp
             ),
 
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment =
+            Alignment.CenterHorizontally
     ) {
 
         Image(
-            painter = painterResource(
-                id = icon
-            ),
+            painter =
+                painterResource(
+                    id = icon
+                ),
 
-            contentDescription = text,
+            contentDescription =
+                text,
 
-            modifier = Modifier.size(27.dp)
+            modifier =
+                Modifier.size(27.dp)
         )
+
 
         Spacer(
-            modifier = Modifier.height(4.dp)
+            modifier =
+                Modifier.height(4.dp)
         )
 
+
         Text(
-            text = text,
-            fontSize = 11.sp,
-            color = DarkText
+            text =
+                text,
+
+            fontSize =
+                11.sp,
+
+            color =
+                DarkText
         )
     }
 }
@@ -977,9 +1112,14 @@ private fun BottomNavigationBar(
 ) {
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 8.dp
+        modifier =
+            Modifier.fillMaxWidth(),
+
+        color =
+            Color.White,
+
+        shadowElevation =
+            8.dp
     ) {
 
         Row(
@@ -994,16 +1134,20 @@ private fun BottomNavigationBar(
             // =================================================
 
             BottomTab(
-                icon = R.drawable.ic_alert_list_bell,
+                icon =
+                    R.drawable.ic_alert_list_bell,
 
                 selected =
-                    selectedTab == 0 && !menuSelected,
+                    selectedTab == 0 &&
+                            !menuSelected,
 
                 onClick = {
+
                     onTabSelected(0)
                 },
 
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             )
 
 
@@ -1012,16 +1156,20 @@ private fun BottomNavigationBar(
             // =================================================
 
             BottomTab(
-                icon = R.drawable.ic_alert_list_subscription,
+                icon =
+                    R.drawable.ic_alert_list_subscription,
 
                 selected =
-                    selectedTab == 1 && !menuSelected,
+                    selectedTab == 1 &&
+                            !menuSelected,
 
                 onClick = {
+
                     onTabSelected(1)
                 },
 
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             )
 
 
@@ -1030,16 +1178,20 @@ private fun BottomNavigationBar(
             // =================================================
 
             BottomTab(
-                icon = R.drawable.ic_alert_list_bel,
+                icon =
+                    R.drawable.ic_alert_list_bel,
 
                 selected =
-                    selectedTab == 2 && !menuSelected,
+                    selectedTab == 2 &&
+                            !menuSelected,
 
                 onClick = {
+
                     onTabSelected(2)
                 },
 
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             )
 
 
@@ -1048,13 +1200,17 @@ private fun BottomNavigationBar(
             // =================================================
 
             BottomTab(
-                icon = R.drawable.ic_alert_list_menu,
+                icon =
+                    R.drawable.ic_alert_list_menu,
 
-                selected = menuSelected,
+                selected =
+                    menuSelected,
 
-                onClick = onMenuClick,
+                onClick =
+                    onMenuClick,
 
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             )
         }
     }
@@ -1080,36 +1236,50 @@ private fun BottomTab(
                 onClick()
             },
 
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment =
+            Alignment.CenterHorizontally
     ) {
 
         Spacer(
-            modifier = Modifier.height(8.dp)
+            modifier =
+                Modifier.height(8.dp)
         )
+
 
         Image(
-            painter = painterResource(
-                id = icon
-            ),
+            painter =
+                painterResource(
+                    id = icon
+                ),
 
-            contentDescription = null,
+            contentDescription =
+                null,
 
-            modifier = Modifier.size(28.dp)
+            modifier =
+                Modifier.size(28.dp)
         )
+
 
         Spacer(
-            modifier = Modifier.weight(1f)
+            modifier =
+                Modifier.weight(1f)
         )
+
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp)
+                .padding(
+                    horizontal = 10.dp
+                )
                 .height(3.dp)
                 .background(
                     if (selected) {
+
                         XpertOrange
+
                     } else {
+
                         Color.Transparent
                     }
                 )
@@ -1134,11 +1304,16 @@ fun HomeScreenPreview() {
     XpertAlertsTheme {
 
         HomeScreen(
+
             onAlertClick = {},
-            
+
             onSearchClick = {},
 
+            onSubscriptionsClick = {},
+
             onArchivedClick = {},
+
+            onForwardAlertsClick = {},
 
             onProfileClick = {},
 
