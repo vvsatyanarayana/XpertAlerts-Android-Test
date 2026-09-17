@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -79,7 +80,8 @@ fun HomeScreen(
     onForwardAlertsClick: () -> Unit,
     onProfileClick: () -> Unit,
     onPasswordClick: () -> Unit,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    onAboutClick: () -> Unit
 ) {
 
     var selectedTab by remember {
@@ -151,6 +153,7 @@ fun HomeScreen(
                     onForwardAlertsClick = onForwardAlertsClick,
                     onProfileClick = onProfileClick,
                     onPasswordClick = onPasswordClick,
+                    onAboutClick= onAboutClick,
                     onLogoutClick = onLogoutClick
                 )
             }
@@ -235,7 +238,7 @@ private fun HomeHeader() {
 
                 Image(
                     painter = painterResource(
-                        id = R.drawable.ic_alert_list_bell
+                        id = R.drawable.ic_alert_list_bel
                     ),
 
                     contentDescription = "Alerts",
@@ -933,6 +936,7 @@ private fun HomeMenu(
     onForwardAlertsClick: () -> Unit,
     onProfileClick: () -> Unit,
     onPasswordClick: () -> Unit,
+    onAboutClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
 
@@ -944,96 +948,80 @@ private fun HomeMenu(
 
         HorizontalDivider()
 
+        // =================================================
+        // FIRST ROW
+        // =================================================
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 10.dp),
+                .padding(
+                    horizontal = 8.dp,
+                    vertical = 8.dp
+                ),
 
-            horizontalArrangement =
-                Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
 
-            // =================================================
-            // ARCHIVED
-            // =================================================
-
             MenuItem(
-                icon =
-                    R.drawable.archivedalerts,
-
-                text =
-                    "Archived",
-
-                onClick =
-                    onArchivedClick
+                icon = R.drawable.archivedalerts,
+                text = "Archived",
+                onClick = onArchivedClick,
+                modifier = Modifier.weight(1f)
             )
 
-
-            // =================================================
-            // FORWARD ALERTS
-            // =================================================
-
             MenuItem(
-                icon =
-                    R.drawable.ic_alert_list_bell,
-
-                text =
-                    "Forward",
-
-                onClick =
-                    onForwardAlertsClick
+                icon = R.drawable.ic_alert_list_bel,
+                text = "Forward",
+                onClick = onForwardAlertsClick,
+                modifier = Modifier.weight(1f)
             )
 
-
-            // =================================================
-            // PROFILE
-            // =================================================
-
             MenuItem(
-                icon =
-                    R.drawable.profile,
-
-                text =
-                    "Profile",
-
-                onClick =
-                    onProfileClick
-            )
-
-
-            // =================================================
-            // PASSWORD
-            // =================================================
-
-            MenuItem(
-                icon =
-                    R.drawable.changepassword,
-
-                text =
-                    "Password",
-
-                onClick =
-                    onPasswordClick
-            )
-
-
-            // =================================================
-            // LOGOUT
-            // =================================================
-
-            MenuItem(
-                icon =
-                    R.drawable.new_logout,
-
-                text =
-                    "Logout",
-
-                onClick =
-                    onLogoutClick
+                icon = R.drawable.profile,
+                text = "Profile",
+                onClick = onProfileClick,
+                modifier = Modifier.weight(1f)
             )
         }
 
+        // =================================================
+        // SECOND ROW
+        // =================================================
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 8.dp,
+                    vertical = 8.dp
+                ),
+
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+
+            MenuItem(
+                icon = R.drawable.changepassword,
+                text = "Password",
+                onClick = onPasswordClick,
+                modifier = Modifier.weight(1f)
+            )
+
+            MenuItem(
+                icon = null,
+                text = "About",
+                onClick = onAboutClick,
+                vectorIcon = Icons.Default.Info,
+                modifier = Modifier.weight(1f)
+            )
+
+            MenuItem(
+                icon = R.drawable.new_logout,
+                text = "Logout",
+                onClick = onLogoutClick,
+                modifier = Modifier.weight(1f)
+            )
+        }
 
         HorizontalDivider()
     }
@@ -1046,18 +1034,20 @@ private fun HomeMenu(
 
 @Composable
 private fun MenuItem(
-    icon: Int,
+    icon: Int?,
     text: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    vectorIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .clickable {
                 onClick()
             }
             .padding(
-                horizontal = 8.dp,
+                horizontal = 4.dp,
                 vertical = 6.dp
             ),
 
@@ -1065,35 +1055,51 @@ private fun MenuItem(
             Alignment.CenterHorizontally
     ) {
 
-        Image(
-            painter =
-                painterResource(
+        // =================================================
+        // ICON
+        // =================================================
+
+        if (vectorIcon != null) {
+
+            Icon(
+                imageVector = vectorIcon,
+
+                contentDescription = text,
+
+                tint = XpertPurple,
+
+                modifier = Modifier.size(27.dp)
+            )
+
+        } else if (icon != null) {
+
+            Image(
+                painter = painterResource(
                     id = icon
                 ),
 
-            contentDescription =
-                text,
+                contentDescription = text,
 
-            modifier =
-                Modifier.size(27.dp)
-        )
+                modifier = Modifier.size(27.dp)
+            )
+        }
 
 
         Spacer(
-            modifier =
-                Modifier.height(4.dp)
+            modifier = Modifier.height(4.dp)
         )
 
 
+        // =================================================
+        // TEXT
+        // =================================================
+
         Text(
-            text =
-                text,
+            text = text,
 
-            fontSize =
-                11.sp,
+            fontSize = 11.sp,
 
-            color =
-                DarkText
+            color = DarkText
         )
     }
 }
@@ -1318,6 +1324,8 @@ fun HomeScreenPreview() {
             onProfileClick = {},
 
             onPasswordClick = {},
+
+            onAboutClick = {},
 
             onLogoutClick = {}
         )

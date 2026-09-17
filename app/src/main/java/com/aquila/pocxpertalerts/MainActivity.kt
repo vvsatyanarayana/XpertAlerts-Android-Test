@@ -21,13 +21,14 @@ import androidx.compose.ui.res.painterResource
 import com.aquila.pocxpertalerts.navigation.AppNavigation
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import kotlinx.coroutines.delay
-
+import androidx.activity.enableEdgeToEdge
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         setContent {
