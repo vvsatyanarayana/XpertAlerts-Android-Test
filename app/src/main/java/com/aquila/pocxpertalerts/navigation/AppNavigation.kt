@@ -44,7 +44,7 @@ import com.aquila.pocxpertalerts.ui.screens.SearchSubscriptionScreen
 // ============================================================
 
 // Temporary session timeout: 15 minutes
-private const val SESSION_TIMEOUT_MILLIS = 15 * 6 * 1000L
+private const val SESSION_TIMEOUT_MILLIS = 15 * 60 * 1000L
 
 
 // ============================================================
@@ -500,14 +500,16 @@ fun AppNavigation() {
 
                     onCreateClick = {
                         navController.navigate(
-                            Screen.SubscriptionDetails.route
+                            Screen.SubscriptionDetails.createRoute("new")
                         )
                     },
 
                     onEditClick = { subscriptionId ->
-
-                        // Keep current UI behavior for now.
-                        // Edit will be connected to API data later.
+                        navController.navigate(
+                            Screen.SubscriptionDetails.createRoute(
+                                subscriptionId
+                            )
+                        )
                     },
 
                     onSearchClick = {
