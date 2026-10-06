@@ -1,73 +1,91 @@
 package com.aquila.pocxpertalerts.data.repository
 
-import android.content.Context
-import android.provider.Settings
-import com.aquila.pocxpertalerts.data.model.User
-import com.aquila.pocxpertalerts.data.remote.RetrofitClient
+import android.net.Uri
+import android.util.Log
+import com.aquila.pocxpertalerts.data.model.toDomain
+import com.aquila.pocxpertalerts.data.remote.ApiService
+import com.aquila.pocxpertalerts.domain.model.User
+import com.aquila.pocxpertalerts.domain.repository.AuthRepository
 
 class LoginRepository(
-    private val context: Context
-) {
+    private val apiService: ApiService
+) : AuthRepository {
 
-    // ========================================================
-    // LOGIN
-    // ========================================================
+    companion object {
+        private const val TAG = "XpertRepository"
+    }
 
-    suspend fun login(
+    override suspend fun login(
         username: String,
-        password: String
-    ): Result<User?> {
+        password: String,
+        deviceId: String
+    ): Result<User> {
 
         return try {
 
-            // ------------------------------------------------
-            // ANDROID DEVICE ID
-            // ------------------------------------------------
+            Log.d(TAG, "Starting authenticateUserForDevices API")
+            Log.d(TAG, "Username: $username")
+            Log.d(TAG, "Device ID available: ${deviceId.isNotBlank()}")
 
-            val deviceId =
-                Settings.Secure.getString(
-                    context.contentResolver,
-                    Settings.Secure.ANDROID_ID
+            /*
+             * The legacy application used:
+             *
+             * android.net.Uri.encode(password)
+             *
+             * before sending the password.
+             *
+             * We preserve that behavior here.
+             */
+            val encodedPassword = Uri.encode(password)
+
+            Log.d(TAG, "Password encoded successfully")
+
+            val users = apiService.authenticateUserForDevices(
+                username = username,
+                password = encodedPassword,
+                deviceId = deviceId
+            )
+
+            Log.d(TAG, "API response received")
+            Log.d(TAG, "Number of users returned: ${users.size}")
+
+            if (users.isEmpty()) {
+
+                Log.e(
+                    TAG,
+                    "API returned an empty user list"
                 )
 
-            // ------------------------------------------------
-            // GET CURRENT API SERVICE
-            // ------------------------------------------------
-
-            val apiService =
-                RetrofitClient.getApiService(
-                    context
-                )
-
-            // ------------------------------------------------
-            // CALL REAL XPERT ALERTS API
-            // ------------------------------------------------
-
-            val response =
-                apiService.authenticateUserForDevices(
-                    username = username,
-                    password = password,
-                    deviceId = deviceId
-                )
-
-            // ------------------------------------------------
-            // RESPONSE
-            // ------------------------------------------------
-
-            if (response.isNotEmpty()) {
-
-                Result.success(
-                    response[0]
+                Result.failure(
+                    Exception(
+                        "No response received from server"
+                    )
                 )
 
             } else {
 
-                Result.success(null)
+                val user = users.first().toDomain()
+
+                Log.d(
+                    TAG,
+                    "Response user ID: ${user.id}"
+                )
+
+                Log.d(
+                    TAG,
+                    "Response user type: ${user.userTypeId}"
+                )
+
+                Result.success(user)
             }
 
         } catch (e: Exception) {
 
-            e.printStackTrace()
+            Log.e(
+                TAG,
+                "Exception while calling login API",
+                e
+            )
 
             Result.failure(e)
         }

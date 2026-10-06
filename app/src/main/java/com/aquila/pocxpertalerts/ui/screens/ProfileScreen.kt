@@ -355,7 +355,11 @@ fun ProfileScreen(
 // PREVIEW
 // ============================================================
 
-@Preview(showBackground = true)
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+
+    )
 @Composable
 private fun ProfileScreenPreview() {
 

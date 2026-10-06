@@ -293,7 +293,11 @@ fun SearchForwardAlertsScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+
+    )
 @Composable
 private fun SearchForwardAlertsScreenPreview() {
     SearchForwardAlertsScreen(

@@ -1,5 +1,6 @@
 package com.aquila.pocxpertalerts.ui.screens
 
+import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,16 +14,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,144 +30,138 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aquila.pocxpertalerts.R
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.theme.AppBackground
+import com.aquila.pocxpertalerts.ui.theme.BorderGray
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+import com.aquila.pocxpertalerts.ui.theme.White
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.viewmodel.login.LoginViewModel
-
-
-// ============================================================
-// COLORS
-// ============================================================
-
-private val XpertPurple =
-    Color(0xFF4B248C)
-
-private val XpertOrange =
-    Color(0xFFED741C)
-
-private val BackgroundColor =
-    Color(0xFFF7F7FA)
-
-private val TextDark =
-    Color(0xFF202124)
-
-private val TextGray =
-    Color(0xFF777777)
-
-private val FieldBackground =
-    Color.White
-
-private val BorderGray =
-    Color(0xFFD5D5D5)
-
-
-// ============================================================
-// LOGIN SCREEN
-// ============================================================
+import com.aquila.pocxpertalerts.viewmodel.login.LoginViewModelFactory
 
 @Composable
 fun LoginScreen(
-    onLoginClick: (String, String) -> Unit,
-    onSettingsClick: () -> Unit,
-    viewModel: LoginViewModel = viewModel()
+    onLoginSuccess: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
 
-    // --------------------------------------------------------
-    // UI STATE
-    // --------------------------------------------------------
+    // =========================================================
+    // VIEWMODEL
+    // =========================================================
+
+    val viewModel: LoginViewModel = viewModel(
+        factory = LoginViewModelFactory()
+    )
 
     val uiState by viewModel.uiState.collectAsState()
 
 
-    // --------------------------------------------------------
+    // =========================================================
+    // ANDROID CONTEXT
+    // =========================================================
+
+    val context = LocalContext.current
+
+
+    // =========================================================
+    // DEVICE ID
+    // =========================================================
+
+    val deviceId = remember {
+
+        Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ANDROID_ID
+        )
+    }
+
+
+    // =========================================================
     // PASSWORD VISIBILITY
-    // --------------------------------------------------------
+    // =========================================================
 
     var passwordVisible by remember {
         mutableStateOf(false)
     }
 
 
-    // --------------------------------------------------------
+    // =========================================================
     // LOGIN SUCCESS
-    // --------------------------------------------------------
+    // =========================================================
+
+    LaunchedEffect(uiState.loginSuccess) {
+
+        if (uiState.loginSuccess) {
+
+            onLoginSuccess()
+
+            viewModel.clearLoginSuccess()
+        }
+    }
 
 
-
-
-    // ========================================================
+    // =========================================================
     // ROOT
-    // ========================================================
+    // =========================================================
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(AppBackground)
     ) {
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(
-                    rememberScrollState()
-                )
-                .padding(horizontal = 22.dp)
+                .padding(horizontal = 10.dp),
+
+            horizontalAlignment =
+                Alignment.CenterHorizontally
         ) {
 
 
             // =================================================
-            // SETTINGS BUTTON
+            // SETTINGS
             // =================================================
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        top = 24.dp,
-                        end = 2.dp
+                        top = 56.dp,
+                        end = 14.dp
                     ),
 
                 horizontalArrangement =
                     Arrangement.End
             ) {
 
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color.White),
-
-                    contentAlignment =
-                        Alignment.Center
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(70.dp)
                 ) {
 
-                    IconButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier.size(44.dp)
-                    ) {
+                    Image(
+                        painter = painterResource(
+                            id = R.drawable.gear
+                        ),
 
-                        Image(
-                            painter = painterResource(
-                                id = R.drawable.gear
-                            ),
+                        contentDescription =
+                            "Settings",
 
-                            contentDescription =
-                                "Settings",
-
-                            modifier =
-                                Modifier.size(25.dp)
-                        )
-                    }
+                        modifier =
+                            Modifier.size(23.dp)
+                    )
                 }
             }
 
@@ -177,101 +171,40 @@ fun LoginScreen(
             // =================================================
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier =
+                    Modifier.height(35.dp)
             )
 
             Image(
                 painter = painterResource(
-                    id = R.drawable.xpertalerts_splash_logo
+                    id =
+                        R.drawable.xpertalerts_splash_logo
                 ),
 
                 contentDescription =
                     "Xpert Alerts Logo",
 
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(145.dp)
-                    .padding(
-                        horizontal = 35.dp
-                    )
+                    .width(400.dp)
+                    .height(180.dp),
+
+                contentScale =
+                    ContentScale.Fit
             )
 
 
             // =================================================
-            // WELCOME
-            // =================================================
-
-            Spacer(
-                modifier = Modifier.height(18.dp)
-            )
-
-            Text(
-                text = "Welcome Back",
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                textAlign =
-                    TextAlign.Center,
-
-                fontSize = 27.sp,
-
-                fontWeight =
-                    FontWeight.Bold,
-
-                color = TextDark
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
-
-
-            Text(
-                text =
-                    "Sign in to continue to Xpert Alerts",
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                    textAlign =
-                        TextAlign.Center,
-
-                fontSize = 14.sp,
-
-                color = TextGray
-            )
-
-
-            // =================================================
-            // USER ID LABEL
+            // SPACE AFTER LOGO
             // =================================================
 
             Spacer(
-                modifier = Modifier.height(32.dp)
-            )
-
-            Text(
-                text = "User ID",
-
-                fontSize = 13.sp,
-
-                fontWeight =
-                    FontWeight.Medium,
-
-                color = TextDark,
-
                 modifier =
-                    Modifier.padding(
-                        start = 4.dp,
-                        bottom = 7.dp
-                    )
+                    Modifier.height(25.dp)
             )
 
 
             // =================================================
-            // USER ID FIELD
+            // USER ID
             // =================================================
 
             OutlinedTextField(
@@ -285,20 +218,16 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp),
+                    .height(55.dp),
 
                 singleLine = true,
 
                 placeholder = {
 
                     Text(
-                        text =
-                            "Enter your User ID",
-
-                        color =
-                            TextGray,
-
-                        fontSize = 14.sp
+                        text = "User ID",
+                        fontSize = 14.sp,
+                        color = TextDark
                     )
                 },
 
@@ -313,7 +242,7 @@ fun LoginScreen(
                             "User ID",
 
                         modifier =
-                            Modifier.size(22.dp)
+                            Modifier.size(18.dp)
                     )
                 },
 
@@ -321,40 +250,38 @@ fun LoginScreen(
                     uiState.userIdError != null,
 
                 shape =
-                    RoundedCornerShape(12.dp),
+                    RoundedCornerShape(25.dp),
 
                 colors =
-                    androidx.compose.material3
-                        .OutlinedTextFieldDefaults
-                        .colors(
+                    OutlinedTextFieldDefaults.colors(
 
-                            focusedBorderColor =
-                                XpertPurple,
+                        focusedBorderColor =
+                            BorderGray,
 
-                            unfocusedBorderColor =
-                                if (
-                                    uiState.userIdError != null
-                                ) {
-                                    Color.Red
-                                } else {
-                                    BorderGray
-                                },
+                        unfocusedBorderColor =
+                            if (
+                                uiState.userIdError != null
+                            ) {
+                                androidx.compose.ui.graphics.Color.Red
+                            } else {
+                                BorderGray
+                            },
 
-                            errorBorderColor =
-                                Color.Red,
+                        errorBorderColor =
+                            androidx.compose.ui.graphics.Color.Red,
 
-                            focusedContainerColor =
-                                FieldBackground,
+                        focusedContainerColor =
+                            White,
 
-                            unfocusedContainerColor =
-                                FieldBackground,
+                        unfocusedContainerColor =
+                            White,
 
-                            errorContainerColor =
-                                FieldBackground,
+                        errorContainerColor =
+                            White,
 
-                            cursorColor =
-                                XpertPurple
-                        )
+                        cursorColor =
+                            XpertOrange
+                    )
             )
 
 
@@ -368,54 +295,33 @@ fun LoginScreen(
                     text =
                         uiState.userIdError!!,
 
-                    color =
-                        Color.Red,
-
                     fontSize = 12.sp,
 
-                    modifier =
-                        Modifier.padding(
-                            start = 4.dp,
-                            top = 5.dp
+                    color =
+                        androidx.compose.ui.graphics.Color.Red,
+
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 8.dp,
+                            top = 4.dp
                         )
                 )
             }
 
 
             // =================================================
-            // PASSWORD LABEL
+            // SPACE
             // =================================================
 
             Spacer(
-                modifier = Modifier.height(
-                    if (uiState.userIdError != null) {
-                        14.dp
-                    } else {
-                        18.dp
-                    }
-                )
-            )
-
-            Text(
-                text = "Password",
-
-                fontSize = 13.sp,
-
-                fontWeight =
-                    FontWeight.Medium,
-
-                color = TextDark,
-
                 modifier =
-                    Modifier.padding(
-                        start = 4.dp,
-                        bottom = 7.dp
-                    )
+                    Modifier.height(8.dp)
             )
 
 
             // =================================================
-            // PASSWORD FIELD
+            // PASSWORD
             // =================================================
 
             OutlinedTextField(
@@ -429,20 +335,16 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp),
+                    .height(55.dp),
 
                 singleLine = true,
 
                 placeholder = {
 
                     Text(
-                        text =
-                            "Enter your password",
-
-                        color =
-                            TextGray,
-
-                        fontSize = 14.sp
+                        text = "Password",
+                        fontSize = 14.sp,
+                        color = TextDark
                     )
                 },
 
@@ -457,14 +359,9 @@ fun LoginScreen(
                             "Password",
 
                         modifier =
-                            Modifier.size(22.dp)
+                            Modifier.size(18.dp)
                     )
                 },
-
-
-                // ------------------------------------------------
-                // SHOW / HIDE PASSWORD
-                // ------------------------------------------------
 
                 trailingIcon = {
 
@@ -477,84 +374,71 @@ fun LoginScreen(
                     ) {
 
                         Image(
-                            painter =
-                                painterResource(
-
-                                    id =
-                                        if (
-                                            passwordVisible
-                                        ) {
-                                            R.drawable.ic_eye_show
-                                        } else {
-                                            R.drawable.ic_eye_hide
-                                        }
-                                ),
+                            painter = painterResource(
+                                id =
+                                    if (passwordVisible) {
+                                        R.drawable.ic_eye_show
+                                    } else {
+                                        R.drawable.ic_eye_hide
+                                    }
+                            ),
 
                             contentDescription =
-                                if (
-                                    passwordVisible
-                                ) {
+                                if (passwordVisible) {
                                     "Hide password"
                                 } else {
                                     "Show password"
                                 },
 
                             modifier =
-                                Modifier.size(22.dp)
+                                Modifier.size(20.dp)
                         )
                     }
                 },
 
-
                 visualTransformation =
                     if (passwordVisible) {
-
                         VisualTransformation.None
-
                     } else {
-
                         PasswordVisualTransformation()
                     },
-
 
                 isError =
                     uiState.passwordError != null,
 
                 shape =
-                    RoundedCornerShape(12.dp),
+                    RoundedCornerShape(25.dp),
 
                 colors =
-                    androidx.compose.material3
-                        .OutlinedTextFieldDefaults
-                        .colors(
+                    OutlinedTextFieldDefaults.colors(
 
-                            focusedBorderColor =
-                                XpertPurple,
+                        focusedBorderColor =
+                            BorderGray,
 
-                            unfocusedBorderColor =
-                                if (
-                                    uiState.passwordError != null
-                                ) {
-                                    Color.Red
-                                } else {
-                                    BorderGray
-                                },
+                        unfocusedBorderColor =
+                            if (
+                                uiState.passwordError != null
+                            ) {
+                                androidx.compose.ui.graphics.Color.Red
+                            } else {
+                                BorderGray
+                            },
 
-                            errorBorderColor =
-                                Color.Red,
+                        errorBorderColor =
+                            androidx.compose.ui.graphics.Color.Red,
 
-                            focusedContainerColor =
-                                FieldBackground,
+                        focusedContainerColor =
+                            White,
 
-                            unfocusedContainerColor =
-                                FieldBackground,
+                        unfocusedContainerColor =
+                            White,
 
-                            errorContainerColor =
-                                FieldBackground,
+                        errorContainerColor =
+                            White,
 
-                            cursorColor =
-                                XpertPurple
-                        )
+                        cursorColor =
+                            XpertOrange
+                    )
             )
 
 
@@ -568,76 +452,78 @@ fun LoginScreen(
                     text =
                         uiState.passwordError!!,
 
-                    color =
-                        Color.Red,
-
                     fontSize = 12.sp,
 
-                    modifier =
-                        Modifier.padding(
-                            start = 4.dp,
-                            top = 5.dp
+                    color =
+                        androidx.compose.ui.graphics.Color.Red,
+
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 8.dp,
+                            top = 4.dp
                         )
                 )
             }
 
 
             // =================================================
-            // SERVER / API ERROR
+            // SERVER ERROR
             // =================================================
 
-            if (
-                uiState.errorMessage != null &&
-                uiState.userIdError == null &&
-                uiState.passwordError == null
-            ) {
-
-                Spacer(
-                    modifier =
-                        Modifier.height(6.dp)
-                )
+            if (uiState.errorMessage != null) {
 
                 Text(
                     text =
                         uiState.errorMessage!!,
 
-                    color =
-                        Color.Red,
-
                     fontSize = 12.sp,
 
-                    modifier =
-                        Modifier.padding(
-                            start = 4.dp
+                    color =
+                        androidx.compose.ui.graphics.Color.Red,
+
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 8.dp,
+                            top = 8.dp
                         )
                 )
             }
+
+
+            // =================================================
+            // SPACE BEFORE LOGIN
+            // =================================================
+
+            Spacer(
+                modifier =
+                    Modifier.height(34.dp)
+            )
 
 
             // =================================================
             // LOGIN BUTTON
             // =================================================
 
-            Spacer(
-                modifier = Modifier.height(26.dp)
-            )
-
             Button(
 
                 onClick = {
 
-                    onLoginClick(
-                        uiState.userId,
-                        uiState.password
+                    viewModel.login(
+                        deviceId = deviceId
                     )
                 },
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(40.dp),
 
                 shape =
-                    RoundedCornerShape(12.dp),
+                    RoundedCornerShape(20.dp),
+
+                enabled =
+                    !uiState.isLoading,
 
                 colors =
                     ButtonDefaults.buttonColors(
@@ -646,119 +532,76 @@ fun LoginScreen(
                             XpertOrange,
 
                         contentColor =
-                            Color.White,
+                            White,
 
                         disabledContainerColor =
-                            XpertPurple.copy(
+                            XpertOrange.copy(
                                 alpha = 0.6f
-                            )
-                    ),
+                            ),
 
-                enabled =
-                    !uiState.isLoading
+                        disabledContentColor =
+                            White
+                    )
             ) {
 
                 Text(
-
                     text =
                         if (uiState.isLoading) {
-                            "LOGGING IN..."
+                            "Logging in..."
                         } else {
-                            "LOGIN"
+                            "Login"
                         },
 
-                    fontSize = 17.sp,
-
-                    fontWeight =
-                        FontWeight.Bold,
-
-                    letterSpacing =
-                        0.5.sp
+                    fontSize = 14.sp
                 )
             }
 
 
             // =================================================
-            // SECURITY MESSAGE
+            // SPACE BEFORE VERSION
             // =================================================
 
             Spacer(
-                modifier = Modifier.height(18.dp)
-            )
-
-            Row(
                 modifier =
-                    Modifier.fillMaxWidth(),
-
-                horizontalArrangement =
-                    Arrangement.Center,
-
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(
-                            XpertOrange
-                        )
-                )
-
-                Spacer(
-                    modifier =
-                        Modifier.width(7.dp)
-                )
-
-                Text(
-                    text =
-                        "Secure access to your alerts",
-
-                    fontSize = 12.sp,
-
-                    color =
-                        TextGray
-                )
-            }
+                    Modifier.height(75.dp)
+            )
 
 
             // =================================================
             // VERSION
             // =================================================
 
-            Spacer(
-                modifier = Modifier.height(55.dp)
-            )
-
             Text(
-                text = "Version 1.0",
+                text =
+                    "App Version : v1.6",
 
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                textAlign =
-                    TextAlign.Center,
-
-                fontSize = 13.sp,
+                fontSize = 14.sp,
 
                 color =
-                    TextGray
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(20.dp)
+                    TextDark
             )
         }
     }
 }
 
-@Preview(showBackground = true)
+
+// =============================================================
+// PREVIEW
+// =============================================================
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+
+)
 @Composable
 fun LoginScreenPreview() {
-    LoginScreen(
-        onLoginClick = { _, _ -> },
-        onSettingsClick = {}
-    )
+
+    XpertAlertsTheme {
+
+        LoginScreen(
+            onLoginSuccess = {},
+            onSettingsClick = {}
+        )
+    }
 }

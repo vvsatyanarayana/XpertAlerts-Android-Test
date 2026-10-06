@@ -1,11 +1,9 @@
 package com.aquila.pocxpertalerts.viewmodel.login
 
-import android.app.Application
-import android.provider.Settings
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aquila.pocxpertalerts.data.model.User
-import com.aquila.pocxpertalerts.data.repository.LoginRepository
+import com.aquila.pocxpertalerts.domain.model.User
+import com.aquila.pocxpertalerts.domain.usecase.LoginUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,27 +13,20 @@ data class LoginUiState(
     val userId: String = "",
     val password: String = "",
 
-    val isLoading: Boolean = false,
-
-    val user: User? = null,
-
-    // Field-specific validation errors
     val userIdError: String? = null,
     val passwordError: String? = null,
-
-    // Server/API error
     val errorMessage: String? = null,
 
-    // Login success
-    val loginSuccess: Boolean = false
+    val isLoading: Boolean = false,
+
+    val loginSuccess: Boolean = false,
+
+    val user: User? = null
 )
 
 class LoginViewModel(
-    application: Application
-) : AndroidViewModel(application) {
-
-    private val repository =
-        LoginRepository(application.applicationContext)
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
 
     private val _uiState =
         MutableStateFlow(LoginUiState())
@@ -44,9 +35,9 @@ class LoginViewModel(
         _uiState.asStateFlow()
 
 
-    // ========================================================
+    // =========================================================
     // USER ID
-    // ========================================================
+    // =========================================================
 
     fun updateUserId(value: String) {
 
@@ -58,9 +49,9 @@ class LoginViewModel(
     }
 
 
-    // ========================================================
+    // =========================================================
     // PASSWORD
-    // ========================================================
+    // =========================================================
 
     fun updatePassword(value: String) {
 
@@ -72,29 +63,22 @@ class LoginViewModel(
     }
 
 
-    // ========================================================
+    // =========================================================
     // LOGIN
-    // ========================================================
+    // =========================================================
 
-    fun login() {
+    fun login(deviceId: String) {
 
         val currentState = _uiState.value
 
-        val username =
-            currentState.userId.trim()
-
-        val password =
-            currentState.password
-
-
-        // ----------------------------------------------------
+        // -----------------------------------------------------
         // VALIDATE USER ID
-        // ----------------------------------------------------
+        // -----------------------------------------------------
 
-        if (username.isBlank()) {
+        if (currentState.userId.isBlank()) {
 
             _uiState.value = currentState.copy(
-                userIdError = "Please enter user ID",
+                userIdError = "Please enter User ID",
                 passwordError = null,
                 errorMessage = null
             )
@@ -103,15 +87,15 @@ class LoginViewModel(
         }
 
 
-        // ----------------------------------------------------
+        // -----------------------------------------------------
         // VALIDATE PASSWORD
-        // ----------------------------------------------------
+        // -----------------------------------------------------
 
-        if (password.isBlank()) {
+        if (currentState.password.isBlank()) {
 
             _uiState.value = currentState.copy(
                 userIdError = null,
-                passwordError = "Please enter password",
+                passwordError = "Please enter Password",
                 errorMessage = null
             )
 
@@ -119,119 +103,113 @@ class LoginViewModel(
         }
 
 
-        // ----------------------------------------------------
-        // DEVICE ID
-        // ----------------------------------------------------
-
-        val deviceId = Settings.Secure.getString(
-            getApplication<Application>().contentResolver,
-            Settings.Secure.ANDROID_ID
-        )
-
-
-        // ----------------------------------------------------
-        // API CALL
-        // ----------------------------------------------------
+        // -----------------------------------------------------
+        // START API CALL
+        // -----------------------------------------------------
 
         viewModelScope.launch {
 
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
+            _uiState.value = currentState.copy(
                 userIdError = null,
                 passwordError = null,
                 errorMessage = null,
+                isLoading = true,
                 loginSuccess = false
             )
 
 
-            val result = repository.login(
-                username = username,
-                password = password,
-
+            val result = loginUseCase(
+                username = currentState.userId.trim(),
+                password = currentState.password,
+                deviceId = deviceId
             )
 
 
-            result.fold(
+            result
+                .onSuccess { user ->
 
-                // =================================================
-                // SUCCESS
-                // =================================================
-
-                onSuccess = { user ->
-
-                    if (user == null) {
-
-                        _uiState.value =
-                            _uiState.value.copy(
-                                isLoading = false,
-                                errorMessage =
-                                    "Invalid user ID or password"
-                            )
-
-                    } else if (user.id <= 0) {
-
-                        _uiState.value =
-                            _uiState.value.copy(
-                                isLoading = false,
-                                errorMessage =
-                                    user.errorMsg
-                                        ?: "Invalid user ID or password"
-                            )
-
-                    } else {
-
-                        _uiState.value =
-                            _uiState.value.copy(
-                                isLoading = false,
-                                user = user,
-                                loginSuccess = true,
-                                errorMessage = null
-                            )
-                    }
-                },
-
-
-                // =================================================
-                // FAILURE
-                // =================================================
-
-                onFailure = { exception ->
-
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage =
-                                exception.message
-                                    ?: "Unable to connect to server"
-                        )
+                    handleLoginResponse(user)
                 }
-            )
+                .onFailure { exception ->
+
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        loginSuccess = false,
+                        errorMessage =
+                            exception.message
+                                ?: "Unable to connect to server"
+                    )
+                }
         }
     }
 
 
-    // ========================================================
-    // CLEAR LOGIN SUCCESS
-    // ========================================================
+    // =========================================================
+    // HANDLE SERVER RESPONSE
+    // =========================================================
+
+    private fun handleLoginResponse(user: User) {
+
+        // -----------------------------------------------------
+        // INVALID LOGIN
+        // -----------------------------------------------------
+
+        if (user.id <= 0) {
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                loginSuccess = false,
+                errorMessage =
+                    user.errorMsg
+                        ?: "Invalid User ID or Password"
+            )
+
+            return
+        }
+
+
+        // -----------------------------------------------------
+        // ADMIN USER
+        // -----------------------------------------------------
+
+        if (
+            user.userTypeId == 1 ||
+            user.userTypeId == 2
+        ) {
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                loginSuccess = false,
+                errorMessage =
+                    "Admin user cannot login into this app"
+            )
+
+            return
+        }
+
+
+        // -----------------------------------------------------
+        // SUCCESS
+        // -----------------------------------------------------
+
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            loginSuccess = true,
+            errorMessage = null,
+            user = user
+        )
+    }
+
+
+    // =========================================================
+    // CLEAR SUCCESS
+    // =========================================================
 
     fun clearLoginSuccess() {
 
         _uiState.value =
             _uiState.value.copy(
                 loginSuccess = false
-            )
-    }
-
-
-    // ========================================================
-    // CLEAR ERROR
-    // ========================================================
-
-    fun clearError() {
-
-        _uiState.value =
-            _uiState.value.copy(
-                errorMessage = null
             )
     }
 }

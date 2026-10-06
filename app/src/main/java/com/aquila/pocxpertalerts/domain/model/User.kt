@@ -1,7 +1,7 @@
-package com.aquila.pocxpertalerts.data.model
+package com.aquila.pocxpertalerts.domain.model
 
 data class User(
-    val id: Long = 0L,
+    val id: Int = 0,
     val fname: String? = null,
     val lname: String? = null,
     val email: String? = null,

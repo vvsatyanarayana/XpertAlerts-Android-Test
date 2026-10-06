@@ -714,8 +714,7 @@ fun ForwardAlertDetailsScreen(
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    widthDp = 360,
-    heightDp = 760
+
 )
 @Composable
 fun ForwardAlertDetailsScreenPreview() {

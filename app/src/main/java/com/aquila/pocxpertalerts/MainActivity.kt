@@ -3,10 +3,12 @@ package com.aquila.pocxpertalerts
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,10 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.aquila.pocxpertalerts.navigation.AppNavigation
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import kotlinx.coroutines.delay
-import androidx.activity.enableEdgeToEdge
 
 class MainActivity : ComponentActivity() {
 
@@ -32,15 +35,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-
-                    XpertAlertsTheme {
-
+            XpertAlertsTheme {
                 XpertAlertsApp()
             }
         }
     }
 }
-
 
 @Composable
 fun XpertAlertsApp() {
@@ -49,25 +49,17 @@ fun XpertAlertsApp() {
         mutableStateOf(true)
     }
 
-
     LaunchedEffect(Unit) {
-
         delay(2000)
-
         showSplash = false
     }
 
-
     if (showSplash) {
-
         SplashScreen()
-
     } else {
-
         AppNavigation()
     }
 }
-
 
 @Composable
 fun SplashScreen() {
@@ -76,7 +68,6 @@ fun SplashScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White),
-
         contentAlignment = Alignment.Center
     ) {
 
@@ -84,13 +75,23 @@ fun SplashScreen() {
             painter = painterResource(
                 id = R.drawable.xpertalerts_splash_logo
             ),
-
-            contentDescription =
-                "Xpert Alerts Logo",
-
-            modifier = Modifier.fillMaxSize(),
-
+            contentDescription = "Xpert Alerts Logo",
+            modifier = Modifier.size(400.dp),
             contentScale = ContentScale.Fit
         )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    widthDp = 360,
+    heightDp = 760
+)
+@Composable
+private fun SplashScreenPreview() {
+
+    XpertAlertsTheme {
+        SplashScreen()
     }
 }

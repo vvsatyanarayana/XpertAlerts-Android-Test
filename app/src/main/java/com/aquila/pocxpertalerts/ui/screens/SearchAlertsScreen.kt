@@ -588,8 +588,7 @@ private fun SearchDropdown(
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    widthDp = 360,
-    heightDp = 760
+
 )
 @Composable
 fun SearchAlertsScreenPreview() {

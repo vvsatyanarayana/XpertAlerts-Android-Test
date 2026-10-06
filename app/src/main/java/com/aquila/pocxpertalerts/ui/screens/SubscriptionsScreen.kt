@@ -386,8 +386,7 @@ private fun SubscriptionEmptyState(
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    widthDp = 360,
-    heightDp = 760
+
 )
 @Composable
 fun SubscriptionsScreenPreview() {
