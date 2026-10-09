@@ -36,13 +36,9 @@ class LoginRepository(
              *
              * We preserve that behavior here.
              */
-            val encodedPassword = Uri.encode(password)
-
-            Log.d(TAG, "Password encoded successfully")
-
             val users = apiService.authenticateUserForDevices(
                 username = username,
-                password = encodedPassword,
+                password = password,
                 deviceId = deviceId
             )
 

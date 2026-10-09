@@ -7,12 +7,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
 
     private const val DEFAULT_BASE_URL =
-        "https://www.xpertalerts.com/ams/webservice/check/"
+        "https://www.xpertalerts.com/ams/webservice/"
 
     fun createApiService(configuredUrl: String): ApiService {
-        val normalizedUrl = configuredUrl.trim().let { url ->
-            if (url.endsWith("/")) url else "$url/"
-        }
+        var normalizedUrl = configuredUrl.trim().trimEnd('/')
 
         require(
             normalizedUrl.startsWith("https://") ||
@@ -21,6 +19,14 @@ object RetrofitClient {
             "Server URL must start with http:// or https://"
         }
 
+        // The legacy app uses /check for testing,
+        // but removes it before constructing the login API URL.
+        if (normalizedUrl.endsWith("/check")) {
+            normalizedUrl = normalizedUrl.removeSuffix("/check")
+        }
+
+        normalizedUrl += "/"
+
         return Retrofit.Builder()
             .baseUrl(normalizedUrl)
             .addConverterFactory(GsonConverterFactory.create())
@@ -28,7 +34,7 @@ object RetrofitClient {
             .create(ApiService::class.java)
     }
 
-    // Temporary compatibility for existing callers.
+    // Compatibility for existing callers.
     val apiService: ApiService by lazy {
         createApiService(DEFAULT_BASE_URL)
     }
