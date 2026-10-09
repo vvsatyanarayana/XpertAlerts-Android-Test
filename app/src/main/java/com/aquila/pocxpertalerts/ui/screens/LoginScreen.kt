@@ -40,14 +40,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aquila.pocxpertalerts.R
+import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
 import com.aquila.pocxpertalerts.ui.theme.BorderGray
 import com.aquila.pocxpertalerts.ui.theme.TextDark
 import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
-import com.aquila.pocxpertalerts.viewmodel.login.LoginViewModel
-import com.aquila.pocxpertalerts.viewmodel.login.LoginViewModelFactory
+import com.aquila.pocxpertalerts.viewmodel.LoginViewModel
+import com.aquila.pocxpertalerts.viewmodel.LoginViewModelFactory
 
 @Composable
 fun LoginScreen(
@@ -59,8 +60,18 @@ fun LoginScreen(
     // VIEWMODEL
     // =========================================================
 
+    val context = LocalContext.current.applicationContext
+
+    val settingsDataStore = remember(context) {
+        SettingsDataStore(context)
+    }
+
+    val loginFactory = remember(settingsDataStore) {
+        LoginViewModelFactory(settingsDataStore)
+    }
+
     val viewModel: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory()
+        factory = loginFactory
     )
 
     val uiState by viewModel.uiState.collectAsState()
@@ -69,8 +80,6 @@ fun LoginScreen(
     // =========================================================
     // ANDROID CONTEXT
     // =========================================================
-
-    val context = LocalContext.current
 
 
     // =========================================================
@@ -123,7 +132,7 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp),
+                .padding(horizontal = 20.dp),
 
             horizontalAlignment =
                 Alignment.CenterHorizontally
@@ -148,7 +157,7 @@ fun LoginScreen(
 
                 IconButton(
                     onClick = onSettingsClick,
-                    modifier = Modifier.size(70.dp)
+                    modifier = Modifier.size(60.dp)
                 ) {
 
                     Image(
@@ -160,7 +169,7 @@ fun LoginScreen(
                             "Settings",
 
                         modifier =
-                            Modifier.size(23.dp)
+                            Modifier.size(33.dp)
                     )
                 }
             }
@@ -218,7 +227,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(55.dp),
+                    .height(53.dp),
 
                 singleLine = true,
 
@@ -226,7 +235,7 @@ fun LoginScreen(
 
                     Text(
                         text = "User ID",
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         color = TextDark
                     )
                 },
@@ -335,7 +344,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(55.dp),
+                    .height(53.dp),
 
                 singleLine = true,
 
@@ -343,7 +352,7 @@ fun LoginScreen(
 
                     Text(
                         text = "Password",
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         color = TextDark
                     )
                 },
@@ -517,7 +526,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp),
+                    .height(53.dp),
 
                 shape =
                     RoundedCornerShape(20.dp),
@@ -552,7 +561,7 @@ fun LoginScreen(
                             "Login"
                         },
 
-                    fontSize = 14.sp
+                    fontSize = 16.sp
                 )
             }
 

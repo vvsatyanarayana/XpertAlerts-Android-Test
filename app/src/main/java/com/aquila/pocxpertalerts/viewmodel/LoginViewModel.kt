@@ -1,4 +1,4 @@
-package com.aquila.pocxpertalerts.viewmodel.login
+package com.aquila.pocxpertalerts.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -46,14 +46,15 @@ fun AboutScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(59.dp)
+                .height(69.dp)
                 .background(XpertOrange)
         ) {
             IconButton(
                 onClick = onBackClick,
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
+
                     .padding(start = 2.dp)
+                    .padding(top = 16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
@@ -68,6 +69,7 @@ fun AboutScreen(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier.align(Alignment.Center)
+
             )
         }
 
