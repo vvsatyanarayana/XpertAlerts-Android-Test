@@ -1,16 +1,11 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 package com.aquila.pocxpertalerts.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
-<<<<<<< HEAD
+
 import com.aquila.pocxpertalerts.data.remote.UnsafeSslHelper
-=======
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,10 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
-<<<<<<< HEAD
 import javax.net.ssl.HttpsURLConnection
-=======
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 import javax.net.ssl.SSLHandshakeException
 
 data class SettingsUiState(
@@ -139,7 +131,7 @@ class SettingsViewModel(
             connection = URL(urlText)
                 .openConnection() as HttpURLConnection
 
-<<<<<<< HEAD
+
             // Bypass SSL validation so the test works even when the server
             // has an expired or self-signed certificate.
             if (connection is HttpsURLConnection) {
@@ -149,8 +141,7 @@ class SettingsViewModel(
                 }
             }
 
-=======
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
+
             connection.requestMethod = "GET"
             connection.connectTimeout = 3_000
             connection.readTimeout = 3_000
@@ -191,8 +182,8 @@ class SettingsViewModel(
             isTesting = false
         )
     }
-<<<<<<< HEAD
+
 }
-=======
-}
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
+
+
+

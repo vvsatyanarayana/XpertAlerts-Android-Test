@@ -39,6 +39,16 @@ android {
     buildFeatures {
         compose = true
     }
+
+
+    packaging {
+        resources {
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/io.netty.versions.properties"
+
+        }
+    }
 }
 
 dependencies {
@@ -54,6 +64,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.firebase.appdistribution.gradle)
 
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)

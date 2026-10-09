@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 package com.aquila.pocxpertalerts.data.remote
-
+import com.aquila.pocxpertalerts.data.remote.ApiService
+import com.aquila.pocxpertalerts.data.remote.UnsafeSslHelper
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -22,8 +19,7 @@ object RetrofitClient {
             "Server URL must start with http:// or https://"
         }
 
-        // The legacy app uses /check for testing,
-        // but removes it before constructing the login API URL.
+        // Remove /check because the API endpoint is under /webservice.
         if (normalizedUrl.endsWith("/check")) {
             normalizedUrl = normalizedUrl.removeSuffix("/check")
         }
@@ -32,10 +28,7 @@ object RetrofitClient {
 
         return Retrofit.Builder()
             .baseUrl(normalizedUrl)
-<<<<<<< HEAD
             .client(UnsafeSslHelper.okHttpClient)
-=======
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
@@ -45,8 +38,4 @@ object RetrofitClient {
     val apiService: ApiService by lazy {
         createApiService(DEFAULT_BASE_URL)
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b

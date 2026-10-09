@@ -3,7 +3,6 @@ package com.aquila.pocxpertalerts.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.repository.LoginRepository

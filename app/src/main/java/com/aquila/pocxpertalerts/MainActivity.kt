@@ -1,3 +1,4 @@
+
 package com.aquila.pocxpertalerts
 
 import android.os.Bundle
@@ -22,17 +23,24 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.aquila.pocxpertalerts.navigation.AppNavigation
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
-        enableEdgeToEdge()
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        enableEdgeToEdge()
+
+        // Keep status bar icons white.
+        WindowCompat.getInsetsController(
+            window,
+            window.decorView
+        ).isAppearanceLightStatusBars = false
 
         setContent {
             XpertAlertsTheme {
@@ -70,7 +78,6 @@ fun SplashScreen() {
             .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
-
         Image(
             painter = painterResource(
                 id = R.drawable.xpertalerts_splash_logo
@@ -85,12 +92,10 @@ fun SplashScreen() {
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    widthDp = 360,
-    heightDp = 760
+
 )
 @Composable
 private fun SplashScreenPreview() {
-
     XpertAlertsTheme {
         SplashScreen()
     }
