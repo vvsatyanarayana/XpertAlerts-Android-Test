@@ -1,5 +1,9 @@
 [versions]
+<<<<<<< HEAD
 agp = "9.4.1"
+=======
+agp = "9.4.0"
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 kotlin = "2.2.10"
 
 coreKtx = "1.10.1"
@@ -13,7 +17,11 @@ composeBom = "2026.02.01"
 
 hilt = "2.59.2"
 hiltNavigationCompose = "1.2.0"
+<<<<<<< HEAD
 ksp = "2.3.6"
+=======
+ksp = "2.2.10-2.0.2"
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 googleServices = "4.5.0"
 firebaseBom = "34.18.0"
 navigationCompose = "2.10.0"

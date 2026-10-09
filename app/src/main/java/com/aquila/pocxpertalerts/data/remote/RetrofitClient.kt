@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 package com.aquila.pocxpertalerts.data.remote
 
 import retrofit2.Retrofit
@@ -28,7 +32,10 @@ object RetrofitClient {
 
         return Retrofit.Builder()
             .baseUrl(normalizedUrl)
+<<<<<<< HEAD
             .client(UnsafeSslHelper.okHttpClient)
+=======
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
@@ -38,4 +45,8 @@ object RetrofitClient {
     val apiService: ApiService by lazy {
         createApiService(DEFAULT_BASE_URL)
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b

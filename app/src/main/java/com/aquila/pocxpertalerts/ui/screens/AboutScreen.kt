@@ -26,6 +26,10 @@ import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
+<<<<<<< HEAD
+=======
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 
@@ -124,7 +128,11 @@ fun AboutScreen(
     showBackground = true,
     showSystemUi = true,
 
+<<<<<<< HEAD
     )
+=======
+)
+>>>>>>> 2c80eb63f346802ddaa8477337c5d263126dbc4b
 @Composable
 private fun AboutScreenPreview() {
     XpertAlertsTheme {
