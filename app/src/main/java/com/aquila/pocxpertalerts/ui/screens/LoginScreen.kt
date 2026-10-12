@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
+import com.aquila.pocxpertalerts.domain.model.User
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
 import com.aquila.pocxpertalerts.ui.theme.BorderGray
@@ -52,7 +53,7 @@ import com.aquila.pocxpertalerts.viewmodel.LoginViewModelFactory
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (User) -> Unit,
     onSettingsClick: () -> Unit
 ) {
 
@@ -109,15 +110,13 @@ fun LoginScreen(
     // =========================================================
 
     LaunchedEffect(uiState.loginSuccess) {
-
         if (uiState.loginSuccess) {
-
-            onLoginSuccess()
-
+            uiState.user?.let { user ->
+                onLoginSuccess(user)
+            }
             viewModel.clearLoginSuccess()
         }
     }
-
 
     // =========================================================
     // ROOT
@@ -227,7 +226,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(53.dp),
+                    .height(55.dp),
 
                 singleLine = true,
 
@@ -251,7 +250,7 @@ fun LoginScreen(
                             "User ID",
 
                         modifier =
-                            Modifier.size(18.dp)
+                            Modifier.size(14.dp)
                     )
                 },
 
@@ -344,7 +343,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(53.dp),
+                    .height(55.dp),
 
                 singleLine = true,
 
@@ -368,7 +367,7 @@ fun LoginScreen(
                             "Password",
 
                         modifier =
-                            Modifier.size(18.dp)
+                            Modifier.size(14.dp)
                     )
                 },
 
@@ -609,7 +608,7 @@ fun LoginScreenPreview() {
     XpertAlertsTheme {
 
         LoginScreen(
-            onLoginSuccess = {},
+            onLoginSuccess = { _ -> },
             onSettingsClick = {}
         )
     }

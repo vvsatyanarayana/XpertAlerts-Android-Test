@@ -36,3 +36,5 @@ val BorderGray = Color(0xFFBDBDBD)
 
 val ErrorRed = Color(0xFFC62828)
 val SuccessGreen = Color(0xFF008F5A)
+
+val IconGreen = Color(0xFF009B62)

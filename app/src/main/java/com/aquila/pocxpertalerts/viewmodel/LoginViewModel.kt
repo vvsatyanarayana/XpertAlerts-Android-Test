@@ -1,5 +1,6 @@
 package com.aquila.pocxpertalerts.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.domain.model.User
@@ -153,6 +154,10 @@ class LoginViewModel(
         // -----------------------------------------------------
         // INVALID LOGIN
         // -----------------------------------------------------
+        Log.d(
+            "AlertsAPI",
+            "Login userId=${user.id}, sessionId=${user.sessionId}, userTypeId=${user.userTypeId}"
+        )
 
         if (user.id <= 0) {
 
