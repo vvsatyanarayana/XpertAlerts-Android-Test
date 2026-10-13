@@ -4,6 +4,7 @@ package com.aquila.pocxpertalerts.navigation
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -38,13 +41,12 @@ import com.aquila.pocxpertalerts.ui.screens.SubscriptionDetailsScreen
 import com.aquila.pocxpertalerts.ui.screens.SubscriptionsScreen
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModelFactory
-
+import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
 
 sealed class Screen(val route: String) {
-
     data object Login : Screen("login")
     data object Home : Screen("home")
     data object Settings : Screen("settings")
@@ -55,9 +57,7 @@ sealed class Screen(val route: String) {
     data object ChangePassword : Screen("change_password")
 
     data object AlertDetail : Screen("alert_detail/{alertId}") {
-        fun createRoute(alertId: String): String {
-            return "alert_detail/$alertId"
-        }
+        fun createRoute(alertId: String) = "alert_detail/$alertId"
     }
 
     data object SearchAlerts : Screen("search_alerts")
@@ -66,9 +66,8 @@ sealed class Screen(val route: String) {
 
     data object SubscriptionDetails :
         Screen("subscription_details/{subscriptionId}") {
-        fun createRoute(subscriptionId: String): String {
-            return "subscription_details/$subscriptionId"
-        }
+        fun createRoute(subscriptionId: String) =
+            "subscription_details/$subscriptionId"
     }
 
     data object SearchSubscription : Screen("search_subscription")
@@ -83,34 +82,47 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun AppNavigation() {
-
     val navController = rememberNavController()
+
+    val appContext = LocalContext.current.applicationContext
+
+    val searchPersistence = remember(appContext) {
+        SearchAlertsPersistence(appContext)
+    }
 
     var loggedInUser by remember {
         mutableStateOf<User?>(null)
     }
 
-    // Stores the actual alerts returned by the API.
     var searchedAlerts by remember {
         mutableStateOf<List<AlertDto>>(emptyList())
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    var selectedAlert by remember {
+        mutableStateOf<AlertDto?>(null)
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = Screen.Login.route
         ) {
 
-            // ==================================================
+            // ----------------------------------------------------
             // LOGIN
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.Login.route) {
                 LoginScreen(
                     onLoginSuccess = { user ->
                         loggedInUser = user
+
+                        // Restore this user's last searched alerts.
+                        searchedAlerts = searchPersistence.loadAlerts(
+                            user.id.toString()
+                        )
+
+                        selectedAlert = null
 
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Login.route) {
@@ -125,42 +137,50 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // HOME
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.Home.route) {
-
-                Log.d(
-                    "AlertsNavigation",
-                    "Opening Home with ${searchedAlerts.size} alerts"
-                )
-
                 HomeScreen(
-                    // IMPORTANT: pass search results to HomeScreen.
                     alerts = searchedAlerts,
 
                     onAlertClick = { alertId ->
-                        Log.d(
-                            "AlertsNavigation",
-                            "Selected alert ID: $alertId"
-                        )
+                        val alert = searchedAlerts.firstOrNull {
+                            it.alertId.toString() == alertId ||
+                                    it.id.toString() == alertId
+                        }
 
-                        navController.navigate(
-                            Screen.AlertDetail.createRoute(alertId)
-                        )
+                        if (alert != null) {
+                            selectedAlert = alert
+
+                            navController.navigate(
+                                Screen.AlertDetail.createRoute(alertId)
+                            )
+                        } else {
+                            Log.e(
+                                "AlertsNavigation",
+                                "Alert not found: $alertId"
+                            )
+                        }
                     },
 
                     onSearchClick = {
-                        navController.navigate(Screen.SearchAlerts.route)
+                        navController.navigate(Screen.SearchAlerts.route) {
+                            launchSingleTop = true
+                        }
                     },
 
                     onSubscriptionsClick = {
-                        navController.navigate(Screen.Subscriptions.route)
+                        navController.navigate(Screen.Subscriptions.route) {
+                            launchSingleTop = true
+                        }
                     },
 
                     onNotificationsClick = {
-                        navController.navigate(Screen.Notifications.route)
+                        navController.navigate(Screen.Notifications.route) {
+                            launchSingleTop = true
+                        }
                     },
 
                     onArchivedClick = {
@@ -185,8 +205,9 @@ fun AppNavigation() {
 
                     onLogoutClick = {
                         loggedInUser = null
-                        searchedAlerts = emptyList()
+                        selectedAlert = null
 
+                        // Do not clear searchedAlerts or saved local data.
                         navController.navigate(Screen.Login.route) {
                             popUpTo(0) {
                                 inclusive = true
@@ -197,27 +218,47 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // ALERT DETAILS
-            // ==================================================
+            // ----------------------------------------------------
 
-            composable(Screen.AlertDetail.route) { backStackEntry ->
-
-                val alertId = backStackEntry.arguments
+            composable(
+                route = Screen.AlertDetail.route,
+                arguments = listOf(
+                    navArgument("alertId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { entry ->
+                val routeAlertId = entry.arguments
                     ?.getString("alertId")
                     .orEmpty()
 
-                AlertDetailScreen(
-                    alertId = alertId,
-                    onBackClick = {
-                        navController.popBackStack()
+                val alert = selectedAlert?.takeIf {
+                    it.alertId.toString() == routeAlertId ||
+                            it.id.toString() == routeAlertId
+                } ?: searchedAlerts.firstOrNull {
+                    it.alertId.toString() == routeAlertId ||
+                            it.id.toString() == routeAlertId
+                }
+
+                if (alert != null) {
+                    AlertDetailScreen(
+                        alert = alert,
+                        onBackClick = {
+                            navController.popBackStack()
+                        }
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Text("Alert details are unavailable.")
                     }
-                )
+                }
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // NOTIFICATIONS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.Notifications.route) {
                 NotificationsScreen(
@@ -227,9 +268,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
-            // ARCHIVED ALERTS
-            // ==================================================
+            // ----------------------------------------------------
+            // ARCHIVED
+            // ----------------------------------------------------
 
             composable(Screen.Archived.route) {
                 ArchivedScreen(
@@ -242,16 +283,29 @@ fun AppNavigation() {
                         )
                     },
                     onAlertClick = { alertId ->
-                        navController.navigate(
-                            Screen.AlertDetail.createRoute(alertId)
-                        )
+                        val alert = searchedAlerts.firstOrNull {
+                            it.alertId.toString() == alertId ||
+                                    it.id.toString() == alertId
+                        }
+
+                        if (alert != null) {
+                            selectedAlert = alert
+                            navController.navigate(
+                                Screen.AlertDetail.createRoute(alertId)
+                            )
+                        } else {
+                            Log.e(
+                                "AlertsNavigation",
+                                "Alert $alertId is not in current search results"
+                            )
+                        }
                     }
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // PROFILE
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.Profile.route) {
                 ProfileScreen(
@@ -261,9 +315,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // CHANGE PASSWORD
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.ChangePassword.route) {
                 ChangePasswordScreen(
@@ -273,9 +327,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SETTINGS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.Settings.route) {
                 SettingsScreen(
@@ -285,9 +339,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // ABOUT
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.About.route) {
                 AboutScreen(
@@ -297,12 +351,11 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SEARCH ALERTS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.SearchAlerts.route) {
-
                 val user = loggedInUser
                 val context = LocalContext.current.applicationContext
 
@@ -320,9 +373,44 @@ fun AppNavigation() {
 
                 SearchAlertsScreen(
                     alertsViewModel = alertsViewModel,
+                    userId = user?.id?.toString().orEmpty(),
+                    userTypeId = user?.userTypeId?.toString().orEmpty(),
+                    sessionId = user?.sessionId.orEmpty(),
 
                     onBackClick = {
                         navController.popBackStack()
+                    },
+
+                    onAlertsTabClick = {
+                        navController.popBackStack(
+                            route = Screen.Home.route,
+                            inclusive = false
+                        )
+                    },
+
+                    onSubscriptionsTabClick = {
+                        navController.navigate(Screen.Subscriptions.route) {
+                            popUpTo(Screen.Home.route) {
+                                inclusive = false
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+
+                    onForwardAlertsTabClick = {
+                        navController.navigate(Screen.ForwardAlerts.route) {
+                            popUpTo(Screen.Home.route) {
+                                inclusive = false
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+
+                    onMenuTabClick = {
+                        navController.popBackStack(
+                            route = Screen.Home.route,
+                            inclusive = false
+                        )
                     },
 
                     onSearchClick = {
@@ -339,11 +427,6 @@ fun AppNavigation() {
                                 "No logged-in user is available"
                             )
                         } else {
-                            Log.d(
-                                "AlertsAPI",
-                                "Starting alert search for user ${user.id}"
-                            )
-
                             alertsViewModel.searchAlerts(
                                 userId = user.id.toString(),
                                 startDate = startDate,
@@ -355,37 +438,32 @@ fun AppNavigation() {
                                 sessionId = user.sessionId.orEmpty(),
 
                                 onSuccess = { results ->
-                                    // Save the actual API results.
-                                    Log.d(
-                                        "AlertsNavigation",
-                                        "Saving ${results.size} alerts"
-                                    )
                                     searchedAlerts = results
 
+                                    // Persist the successful search results for this user.
+                                    searchPersistence.saveAlerts(
+                                        userId = user.id.toString(),
+                                        alerts = results
+                                    )
+
                                     Log.d(
-                                        "AlertsAPI",
-                                        "Search succeeded. " +
-                                                "Received ${results.size} alerts"
+                                        "AlertsNavigation",
+                                        "Search succeeded: ${results.size} alerts"
                                     )
 
                                     results.forEach { alert ->
                                         Log.d(
                                             "AlertsAPI",
-                                            "Alert ID=${alert.id}, " +
+                                            "id=${alert.id}, " +
+                                                    "alertId=${alert.alertId}, " +
                                                     "subject=${alert.subject}"
                                         )
                                     }
 
-                                    // Return to the existing Home screen.
-                                    val returnedToHome =
-                                        navController.popBackStack(
-                                            Screen.Home.route,
-                                            inclusive = false
-                                        )
-
-                                    Log.d(
-                                        "AlertsNavigation",
-                                        "Returned to Home: $returnedToHome"
+                                    navController.popBackStack(
+                                        route = Screen.Home.route,
+                                        inclusive = false,
+                                        saveState = true
                                     )
                                 }
                             )
@@ -394,9 +472,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SEARCH ARCHIVED ALERTS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.SearchArchivedAlerts.route) {
                 SearchArchivedAlertsScreen(
@@ -409,9 +487,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SUBSCRIPTIONS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.Subscriptions.route) {
                 SubscriptionsScreen(
@@ -438,9 +516,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SUBSCRIPTION DETAILS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.SubscriptionDetails.route) {
                 SubscriptionDetailsScreen(
@@ -453,9 +531,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SEARCH SUBSCRIPTIONS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.SearchSubscription.route) {
                 SearchSubscriptionScreen(
@@ -468,9 +546,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // FORWARD ALERTS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.ForwardAlerts.route) {
                 ForwardAlertsScreen(
@@ -495,9 +573,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // FORWARD ALERT DETAILS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.ForwardAlertDetails.route) {
                 ForwardAlertDetailsScreen(
@@ -510,9 +588,9 @@ fun AppNavigation() {
                 )
             }
 
-            // ==================================================
+            // ----------------------------------------------------
             // SEARCH FORWARD ALERTS
-            // ==================================================
+            // ----------------------------------------------------
 
             composable(Screen.SearchForwardAlerts.route) {
                 SearchForwardAlertsScreen(

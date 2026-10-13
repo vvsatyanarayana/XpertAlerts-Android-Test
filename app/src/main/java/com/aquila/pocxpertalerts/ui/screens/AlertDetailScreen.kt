@@ -1,6 +1,6 @@
+
 package com.aquila.pocxpertalerts.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,12 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-
-// =========================================================
-// COLORS
-// =========================================================
-
+import com.aquila.pocxpertalerts.data.model.AlertDto
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import java.text.SimpleDateFormat
+import java.util.Locale
+import android.text.Html
 private val XpertOrange = Color(0xFFED741C)
 private val XpertPurple = Color(0xFF3F237D)
 private val ScreenBackground = Color(0xFFF7F7F7)
@@ -60,567 +58,294 @@ private val DarkText = Color(0xFF222222)
 private val GrayText = Color(0xFF777777)
 private val LightOrange = Color(0xFFFFF1E8)
 
-
-// =========================================================
-// ALERT DETAIL SCREEN
-// =========================================================
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertDetailScreen(
-    alertId: String,
+    alert: AlertDto,
     onBackClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+    var selectedAction by remember { mutableStateOf<String?>(null) }
 
-    // =====================================================
-    // TEMPORARY ACTION STATE
-    // =====================================================
-
-    var showMenu by remember {
-        mutableStateOf(false)
+    val displayedId = if (alert.alertId != 0) {
+        alert.alertId.toString()
+    } else {
+        alert.id.toString()
     }
 
-    var selectedAction by remember {
-        mutableStateOf<String?>(null)
+    val subject = alert.subject
+        ?.takeIf { it.isNotBlank() }
+        ?: "System Alert"
+
+    val message = remember(alert.message) {
+        val rawMessage = alert.message
+            ?.takeIf { it.isNotBlank() }
+            ?: "No message is available for this alert."
+
+        Html.fromHtml(
+            rawMessage,
+            Html.FROM_HTML_MODE_LEGACY
+        ).toString().trim()
     }
 
-
-    // =====================================================
-    // SCREEN
-    // =====================================================
+    val receivedDate = remember(alert.alertSendDate) {
+        formatAlertDate(alert.alertSendDate)
+    }
 
     Scaffold(
-
         containerColor = ScreenBackground,
-
         topBar = {
 
+
             TopAppBar(
-
-                // ---------------------------------------------
-                // SUBJECT IN TOOLBAR
-                // ---------------------------------------------
-
                 title = {
-
                     Text(
-                        text = "System Alert",
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = XpertPurple,
-                        maxLines = 1
+                        text = "Alert Details",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
                     )
                 },
-
-
-                // ---------------------------------------------
-                // BACK BUTTON
-                // ---------------------------------------------
-
                 navigationIcon = {
-
-                    IconButton(
-                        onClick = onBackClick
-                    ) {
-
+                    IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = XpertPurple
+                            tint = Color.White
                         )
                     }
                 },
-
-
-                // ---------------------------------------------
-                // DYNAMIC ACTION MENU
-                // ---------------------------------------------
-
                 actions = {
-
-                    Box {
-
-                        IconButton(
-                            onClick = {
-                                showMenu = true
-                            }
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Alert actions",
-                                tint = XpertPurple
-                            )
-                        }
-
-
-                        // =====================================
-                        // OVERFLOW MENU
-                        // =====================================
-
-                        DropdownMenu(
-                            expanded = showMenu,
-
-                            onDismissRequest = {
-                                showMenu = false
-                            }
-                        ) {
-
-                            /*
-                             * TEMPORARY ACTIONS
-                             *
-                             * Later these captions will come
-                             * from getAlertButtonDetails API.
-                             */
-
-
-                            DropdownMenuItem(
-
-                                text = {
-                                    Text(
-                                        text = "Mark as read"
-                                    )
-                                },
-
-                                onClick = {
-
-                                    showMenu = false
-
-                                    selectedAction =
-                                        "Mark as read"
-                                }
-                            )
-
-
-                            DropdownMenuItem(
-
-                                text = {
-                                    Text(
-                                        text = "Archive"
-                                    )
-                                },
-
-                                onClick = {
-
-                                    showMenu = false
-
-                                    selectedAction =
-                                        "Archive"
-                                }
-                            )
-
-
-                            DropdownMenuItem(
-
-                                text = {
-                                    Text(
-                                        text = "Forward"
-                                    )
-                                },
-
-                                onClick = {
-
-                                    showMenu = false
-
-                                    selectedAction =
-                                        "Forward"
-                                }
-                            )
-                        }
-                    }
+                    // Empty spacer balances the back button,
+                    // keeping the title visually centered.
+                    Spacer(modifier = Modifier.width(48.dp))
                 },
-
-
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = XpertOrange,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
                 )
             )
+
+
         }
-
     ) { innerPadding ->
-
-
-        // =====================================================
-        // MAIN CONTENT
-        // =====================================================
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(
-                    rememberScrollState()
-                )
-                .padding(
-                    horizontal = 16.dp,
-                    vertical = 18.dp
-                )
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 10.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-
-            // =================================================
-            // ALERT HEADER
-            // =================================================
-
-            AlertHeader()
-
-
-            Spacer(
-                modifier = Modifier.height(18.dp)
-            )
-
-
-            // =================================================
-            // MESSAGE
-            // =================================================
-
-            MessageCard()
-
-
-            Spacer(
-                modifier = Modifier.height(18.dp)
-            )
-
-
-            // =================================================
-            // ALERT INFORMATION
-            // =================================================
-
-            AlertInformationCard(
-                alertId = alertId
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
-        }
-    }
-
-
-    // =========================================================
-    // CONFIRMATION DIALOG
-    // =========================================================
-
-    if (selectedAction != null) {
-
-        AlertActionConfirmationDialog(
-
-            action = selectedAction!!,
-
-            onConfirm = {
-
-                /*
-                 * TEMPORARY
-                 *
-                 * Later this will call:
-                 *
-                 * processActions API
-                 */
-
-                selectedAction = null
-            },
-
-            onDismiss = {
-
-                selectedAction = null
-            }
-        )
-    }
-}
-
-
-// =========================================================
-// ALERT HEADER
-// =========================================================
-
-@Composable
-private fun AlertHeader() {
-
-    Card(
-
-        modifier = Modifier.fillMaxWidth(),
-
-        shape = RoundedCornerShape(16.dp),
-
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
-    ) {
-
-        Row(
-
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            // ---------------------------------------------
-            // ICON
-            // ---------------------------------------------
-
-            Surface(
-
-                modifier = Modifier.size(52.dp),
-
-                shape = RoundedCornerShape(14.dp),
-
-                color = LightOrange
+            // Alert summary
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
-
-                Box(
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = LightOrange
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Alert",
+                                tint = XpertOrange,
+                                modifier = Modifier.size(25.dp)
+                            )
+                        }
+                    }
 
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                        contentDescription = "Alert",
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = subject,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
 
-                        tint = XpertOrange,
+                        Spacer(modifier = Modifier.height(5.dp))
 
-                        modifier = Modifier.size(29.dp)
+                        Text(
+                            text = receivedDate,
+                            fontSize = 13.sp,
+                            color = GrayText
+                        )
+                    }
+                }
+            }
+
+            // Full alert message
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Text(
+                        text = "Message",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = XpertPurple
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = message,
+                        fontSize = 15.sp,
+                        lineHeight = 24.sp,
+                        color = DarkText
                     )
                 }
             }
 
-
-            Spacer(
-                modifier = Modifier.width(14.dp)
-            )
-
-
-            // ---------------------------------------------
-            // SUBJECT + DATE
-            // ---------------------------------------------
-
-            Column(
-                modifier = Modifier.weight(1f)
+            // Alert information
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(1.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = "Alert Information",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = XpertPurple
+                    )
 
-                Text(
-                    text = "System Alert",
+                    DetailRow(
+                        label = "Alert ID",
+                        value = displayedId
+                    )
 
-                    fontSize = 20.sp,
+                    DetailRow(
+                        label = "Received",
+                        value = receivedDate
+                    )
 
-                    fontWeight = FontWeight.Bold,
+                    DetailRow(
+                        label = "Application ID",
+                        value = alert.applicationId.toString()
+                    )
 
-                    color = DarkText
-                )
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
-
-                Text(
-                    text = "Today • 10 min ago",
-
-                    fontSize = 13.sp,
-
-                    color = GrayText
-                )
+                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
-}
 
-
-// =========================================================
-// MESSAGE CARD
-// =========================================================
-
-@Composable
-private fun MessageCard() {
-
-    Card(
-
-        modifier = Modifier.fillMaxWidth(),
-
-        shape = RoundedCornerShape(16.dp),
-
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+    selectedAction?.let { action ->
+        AlertActionConfirmationDialog(
+            action = action,
+            onConfirm = {
+                // Connect the action API here when available.
+                selectedAction = null
+            },
+            onDismiss = {
+                selectedAction = null
+            }
         )
-    ) {
-
-        Column(
-
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-
-            Text(
-                text = "Message",
-
-                fontSize = 17.sp,
-
-                fontWeight = FontWeight.Bold,
-
-                color = XpertPurple
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(14.dp)
-            )
-
-
-            // =================================================
-            // FULL MESSAGE BODY
-            // =================================================
-
-            Text(
-
-                text = """
-                    New alert received from Xpert Alerts.
-
-                    Please review this alert and take the required action if necessary.
-
-                    This is the complete message area for the alert. When the backend is connected, the actual message content returned by the Xpert Alerts server will be displayed here.
-
-                    The message can contain multiple paragraphs and can be longer than the preview shown on the Alerts screen.
-                """.trimIndent(),
-
-                fontSize = 15.sp,
-
-                lineHeight = 24.sp,
-
-                color = DarkText
-            )
-        }
     }
 }
 
+private fun formatAlertDate(rawDate: String?): String {
+    if (rawDate.isNullOrBlank()) {
+        return "Date unavailable"
+    }
 
-// =========================================================
-// ALERT INFORMATION
-// =========================================================
+    val patterns = listOf(
+        "MM/dd/yyyy hh:mm a",
+        "MM/dd/yyyy HH:mm:ss",
+        "MM/dd/yyyy HH:mm",
+        "dd/MM/yyyy hh:mm a",
+        "dd/MM/yyyy HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd"
+    )
 
-@Composable
-private fun AlertInformationCard(
-    alertId: String
-) {
+    for (pattern in patterns) {
+        try {
+            val parser = java.text.SimpleDateFormat(
+                pattern,
+                java.util.Locale.US
+            ).apply {
+                isLenient = false
+            }
 
-    Card(
+            val parsedDate = parser.parse(rawDate) ?: continue
 
-        modifier = Modifier.fillMaxWidth(),
+            return java.text.SimpleDateFormat(
+                "dd MMM yyyy",
+                java.util.Locale.US
+            ).format(parsedDate)
 
-        shape = RoundedCornerShape(16.dp),
-
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
-    ) {
-
-        Column(
-
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-
-            Text(
-                text = "Alert Information",
-
-                fontSize = 17.sp,
-
-                fontWeight = FontWeight.Bold,
-
-                color = XpertPurple
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(14.dp)
-            )
-
-
-            DetailRow(
-                label = "Alert ID",
-                value = alertId
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
-
-
-            DetailRow(
-                label = "Status",
-                value = "Unread"
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
-
-
-            DetailRow(
-                label = "Received",
-                value = "Today"
-            )
+        } catch (_: java.text.ParseException) {
+            // Try the next supported format.
         }
     }
+
+    return rawDate
 }
-
-
-// =========================================================
-// DETAIL ROW
-// =========================================================
 
 @Composable
 private fun DetailRow(
     label: String,
     value: String
 ) {
-
     Row(
-
         modifier = Modifier.fillMaxWidth(),
-
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Text(
             text = label,
-
             modifier = Modifier.weight(1f),
-
             fontSize = 14.sp,
-
             color = GrayText
         )
 
-
         Text(
             text = value,
-
             fontSize = 14.sp,
-
             fontWeight = FontWeight.Medium,
-
             color = DarkText
         )
     }
 }
-
-
-// =========================================================
-// ACTION CONFIRMATION DIALOG
-// =========================================================
 
 @Composable
 private fun AlertActionConfirmationDialog(
@@ -628,84 +353,52 @@ private fun AlertActionConfirmationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-
     AlertDialog(
-
         onDismissRequest = onDismiss,
-
         icon = {
-
             Icon(
                 imageVector = Icons.Default.Warning,
-
                 contentDescription = "Confirmation",
-
                 tint = XpertOrange,
-
                 modifier = Modifier.size(32.dp)
             )
         },
-
         title = {
-
             Text(
                 text = "Confirm Action",
-
                 fontWeight = FontWeight.Bold
             )
         },
-
         text = {
-
-            Text(
-                text = "Are you sure you want to \"$action\" this alert?"
-            )
+            Text("Are you sure you want to \"$action\" this alert?")
         },
-
         confirmButton = {
-
-            TextButton(
-                onClick = onConfirm
-            ) {
-
-                Text(
-                    text = "Confirm",
-                    color = XpertOrange
-                )
+            TextButton(onClick = onConfirm) {
+                Text("Confirm", color = XpertOrange)
             }
         },
-
         dismissButton = {
-
-            TextButton(
-                onClick = onDismiss
-            ) {
-
-                Text(
-                    text = "Cancel"
-                )
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )
 }
 
-
-// =========================================================
-// PREVIEW
-// =========================================================
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true,
-
-)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun AlertDetailScreenPreview() {
-
-    com.aquila.pocxpertalerts.ui.XpertAlertsTheme {
-
+private fun AlertDetailScreenPreview() {
+    XpertAlertsTheme {
         AlertDetailScreen(
-            alertId = "1",
+            alert = AlertDto(
+                id = 635L,
+                alertId = 635,
+                subject = "System Alert",
+                message = "New alert received from Xpert Alerts.\n\n" +
+                        "Please review this alert and take the required action.",
+                alertSendDate = "2026-10-13",
+                applicationId = 45L
+            ),
             onBackClick = {}
         )
     }

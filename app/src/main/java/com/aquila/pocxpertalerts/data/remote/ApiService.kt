@@ -19,4 +19,18 @@ interface ApiService {
     suspend fun getAlertsForDevices(
         @QueryMap parameters: Map<String, String>
     ): JsonElement
+
+    @GET("getApplicationList")
+    suspend fun getApplicationList(
+        @Query("userId") userId: String,
+        @Query("userTypeId") userTypeId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("getAlertDefinitionList")
+    suspend fun getAlertDefinitionList(
+        @Query("applicationId") applicationId: String,
+        @Query("alertFlag") alertFlag: String = "1",
+        @Query("sessionId") sessionId: String
+    ): JsonElement
 }

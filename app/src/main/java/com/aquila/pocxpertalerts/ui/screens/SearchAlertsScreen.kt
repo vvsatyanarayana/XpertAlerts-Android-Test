@@ -5,69 +5,47 @@ import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.aquila.pocxpertalerts.R
-import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModel
 import java.util.Calendar
 import java.util.Locale
+import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
+import com.aquila.pocxpertalerts.data.local.SavedAlertSearchFilters
+import com.aquila.pocxpertalerts.ui.screens.FieldBorder
 
-// ------------------------------------------------------------
-// COLORS
-// ------------------------------------------------------------
 
 private val SearchOrange = Color(0xFFED741C)
 private val SearchGreen = Color(0xFF009B62)
@@ -76,9 +54,9 @@ private val FieldBorder = Color(0xFFBDBDBD)
 private val TextBlack = Color(0xFF000000)
 private val HintGray = Color(0xFF757575)
 
-// ------------------------------------------------------------
+// ============================================================
 // SEARCH ALERTS SCREEN
-// ------------------------------------------------------------
+// ============================================================
 
 @Composable
 fun SearchAlertsScreen(
@@ -91,21 +69,111 @@ fun SearchAlertsScreen(
         application: String,
         alertDefinition: String
     ) -> Unit,
-    alertsViewModel: AlertsViewModel
+    alertsViewModel: AlertsViewModel,
+    userId: String,
+    userTypeId: String,
+    sessionId: String,
+    onAlertsTabClick: () -> Unit = onBackClick,
+    onSubscriptionsTabClick: () -> Unit = {},
+    onForwardAlertsTabClick: () -> Unit = {},
+    onMenuTabClick: () -> Unit = onBackClick
 ) {
-    val alerts by alertsViewModel.alerts.collectAsState()
     val isLoading by alertsViewModel.isLoading.collectAsState()
     val errorMessage by alertsViewModel.errorMessage.collectAsState()
+    val applications by alertsViewModel.applications.collectAsState()
+    val alertDefinitions by alertsViewModel.alertDefinitions.collectAsState()
+    val isLoadingApplications by
+    alertsViewModel.isLoadingApplications.collectAsState()
+    val isLoadingDefinitions by
+    alertsViewModel.isLoadingDefinitions.collectAsState()
+    val dropdownErrorMessage by
+    alertsViewModel.dropdownErrorMessage.collectAsState()
 
-    var keyword by remember { mutableStateOf("") }
-    var startDate by remember { mutableStateOf("10/09/2026") }
-    var endDate by remember { mutableStateOf("10/12/2026") }
+    LaunchedEffect(userId, userTypeId, sessionId) {
+        alertsViewModel.loadApplications(
+            userId = userId,
+            userTypeId = userTypeId,
+            sessionId = sessionId
+        )
+    }
 
-    var viewBy by remember { mutableStateOf("") }
-    var application by remember { mutableStateOf("") }
-    var alertDefinition by remember { mutableStateOf("") }
 
-    var selectedTab by remember { mutableStateOf("alerts") }
+    val context = LocalContext.current.applicationContext
+
+    val searchPersistence = remember(context) {
+        SearchAlertsPersistence(context)
+    }
+
+// Load the saved form once for the current user.
+    val initialFilters = remember(userId) {
+        searchPersistence.loadFilters(userId)
+    }
+
+    var keyword by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.keyword)
+    }
+
+    var startDate by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.startDate)
+    }
+
+    var endDate by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.endDate)
+    }
+
+    var viewBy by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.viewBy)
+    }
+
+    var applicationName by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.applicationName)
+    }
+
+    var applicationId by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.applicationId)
+    }
+
+    var alertDefinitionName by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.alertDefinitionName)
+    }
+
+    var alertDefinitionId by rememberSaveable(userId) {
+        mutableStateOf(initialFilters.alertDefinitionId)
+    }
+
+    var selectedTab by rememberSaveable(userId) {
+        mutableStateOf("alerts")
+    }
+
+// Save form changes locally so they survive logout and app closure.
+    LaunchedEffect(
+        userId,
+        keyword,
+        startDate,
+        endDate,
+        viewBy,
+        applicationName,
+        applicationId,
+        alertDefinitionName,
+        alertDefinitionId
+    ) {
+        if (userId.isNotBlank()) {
+            searchPersistence.saveFilters(
+                userId = userId,
+                filters = SavedAlertSearchFilters(
+                    keyword = keyword,
+                    startDate = startDate,
+                    endDate = endDate,
+                    viewBy = viewBy,
+                    applicationName = applicationName,
+                    applicationId = applicationId,
+                    alertDefinitionName = alertDefinitionName,
+                    alertDefinitionId = alertDefinitionId
+                )
+            )
+        }
+    }
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -114,7 +182,22 @@ fun SearchAlertsScreen(
         bottomBar = {
             SearchBottomNavigation(
                 selectedTab = selectedTab,
-                onTabClick = { selectedTab = it }
+                onAlertsClick = {
+                    selectedTab = "alerts"
+                    onAlertsTabClick()
+                },
+                onSubscriptionsClick = {
+                    selectedTab = "subscriptions"
+                    onSubscriptionsTabClick()
+                },
+                onForwardAlertsClick = {
+                    selectedTab = "forward"
+                    onForwardAlertsTabClick()
+                },
+                onMenuClick = {
+                    selectedTab = "menu"
+                    onMenuTabClick()
+                }
             )
         }
     ) { innerPadding ->
@@ -125,15 +208,13 @@ fun SearchAlertsScreen(
                 .padding(innerPadding)
                 .background(ScreenBackground)
         ) {
-
-            // ORANGE TOOLBAR
-
+            // Orange toolbar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(SearchOrange)
                     .statusBarsPadding()
-                    .height(60.dp)
+                    .height(52.dp)
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -161,52 +242,53 @@ fun SearchAlertsScreen(
                 Text(
                     text = "Reset",
                     color = Color.White,
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable {
                         keyword = ""
                         startDate = ""
                         endDate = ""
-                        viewBy = ""
-                        application = ""
-                        alertDefinition = ""
+                        viewBy = "- Select -"
+                        applicationName = "- Select Application -"
+                        applicationId = ""
+                        alertDefinitionName = "- Select Alert Definition -"
+                        alertDefinitionId = ""
+
+                        alertsViewModel.loadAlertDefinitions(
+                            applicationId = "",
+                            sessionId = sessionId
+                        )
+                        alertsViewModel.clearError()
+                        alertsViewModel.clearDropdownError()
                     }
                 )
             }
 
-            // SEARCH FORM AND RESULTS
-
+            // Scrollable search form
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = 8.dp)
+                    .padding(bottom = 12.dp)
             ) {
-
                 CompactTextField(
                     value = keyword,
                     onValueChange = { keyword = it },
                     placeholder = "Search By",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp
-                        )
+                        .padding(start = 20.dp, end = 20.dp, top = 18.dp)
                         .height(45.dp)
                 )
 
                 FormLabel(
                     text = "Start Date",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp
-                        )
+                    modifier = Modifier.padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 18.dp
+                    )
                 )
 
                 CompactDateField(
@@ -214,23 +296,17 @@ fun SearchAlertsScreen(
                     onDateSelected = { startDate = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 10.dp
-                        )
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
                         .height(45.dp)
                 )
 
                 FormLabel(
                     text = "End Date",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp
-                        )
+                    modifier = Modifier.padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 10.dp
+                    )
                 )
 
                 CompactDateField(
@@ -238,72 +314,82 @@ fun SearchAlertsScreen(
                     onDateSelected = { endDate = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 10.dp
-                        )
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
                         .height(45.dp)
                 )
-
-                // View By dropdown.
-                // These are display labels, not backend IDs.
 
                 CompactDropdown(
                     selectedValue = viewBy,
                     placeholder = "- Select -",
                     options = listOf(
+                        "- Select -",
                         "Alert Definition",
                         "Application"
                     ),
-                    onSelected = {
-                        viewBy = it
-                        application = ""
-                        alertDefinition = ""
+                    onSelected = { viewBy = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                        .height(45.dp)
+                )
+
+                CompactDropdown(
+                    selectedValue = applicationName,
+                    placeholder = if (isLoadingApplications) {
+                        "Loading applications..."
+                    } else {
+                        "- Select Application -"
+                    },
+                    options = listOf("- Select Application -") +
+                            applications.map { it.name },
+                    onSelected = { name ->
+                        val app = applications.firstOrNull {
+                            it.name == name
+                        }
+
+                        applicationName =
+                            app?.name ?: "- Select Application -"
+                        applicationId = app?.id.orEmpty()
+
+                        alertDefinitionName = "- Select Alert Definition -"
+                        alertDefinitionId = ""
+
+                        alertsViewModel.loadAlertDefinitions(
+                            applicationId = applicationId,
+                            sessionId = sessionId
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp
-                        )
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
                         .height(45.dp)
                 )
 
-                // TODO: Replace placeholder application options
-                // with the actual application list from the API.
-
                 CompactDropdown(
-                    selectedValue = application,
-                    placeholder = "- Select Application -",
-                    options = emptyList(),
-                    onSelected = { application = it },
+                    selectedValue = alertDefinitionName,
+                    placeholder = if (isLoadingDefinitions) {
+                        "Loading alert definitions..."
+                    } else {
+                        "- Select Alert Definition -"
+                    },
+                    options = listOf("- Select Alert Definition -") +
+                            if (applicationId.isBlank()) {
+                                emptyList()
+                            } else {
+                                alertDefinitions.map { it.name }
+                            },
+                    onSelected = { name ->
+                        val definition = alertDefinitions.firstOrNull {
+                            it.name == name
+                        }
+
+                        alertDefinitionName =
+                            definition?.name ?: "- Select Alert Definition -"
+                        alertDefinitionId = definition?.id.orEmpty()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp
-                        )
-                        .height(45.dp)
-                )
-
-                // TODO: Replace placeholder alert-definition options
-                // with the actual alert-definition list from the API.
-
-                CompactDropdown(
-                    selectedValue = alertDefinition,
-                    placeholder = "- Select Alert Definition -",
-                    options = emptyList(),
-                    onSelected = { alertDefinition = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 20.dp
-                        )
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
                         .height(45.dp)
                 )
 
@@ -313,53 +399,56 @@ fun SearchAlertsScreen(
                             startDate,
                             endDate,
                             keyword,
-                            viewBy,
-                            application,
-                            alertDefinition
+                            when (viewBy) {
+                                "Alert Definition" -> "1"
+                                "Application" -> "2"
+                                else -> "0"
+                            },
+                            applicationId.ifBlank { "0" },
+                            alertDefinitionId.ifBlank { "0" }
                         )
                     },
                     enabled = !isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 30.dp
-                        )
-                        .height(45.dp),
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 18.dp)
+                        .height(46.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SearchOrange,
                         contentColor = Color.White
-                    ),
-                    contentPadding = PaddingValues(
-                        horizontal = 12.dp,
-                        vertical = 0.dp
                     )
                 ) {
                     Text(
                         text = if (isLoading) "Searching..." else "Search",
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                // API LOADING INDICATOR
+                if (dropdownErrorMessage != null) {
+                    Text(
+                        text = dropdownErrorMessage.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(
+                            horizontal = 20.dp,
+                            vertical = 8.dp
+                        ),
+                        fontSize = 13.sp
+                    )
+                }
 
                 if (isLoading) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
+                            .padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = SearchOrange
-                        )
+                        CircularProgressIndicator(color = SearchOrange)
                     }
                 }
-
-                // API ERROR MESSAGE
 
                 if (!isLoading && errorMessage != null) {
                     Text(
@@ -367,99 +456,19 @@ fun SearchAlertsScreen(
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(
                             horizontal = 20.dp,
-                            vertical = 16.dp
+                            vertical = 12.dp
                         ),
                         fontSize = 14.sp
                     )
-                }
-
-                // REAL ALERT RESULTS
-
-                if (!isLoading && errorMessage == null) {
-                    if (alerts.isEmpty()) {
-                        Text(
-                            text = "Search for alerts to see results.",
-                            color = HintGray,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            fontSize = 14.sp
-                        )
-                    } else {
-                        Text(
-                            text = "Alerts (${alerts.size})",
-                            modifier = Modifier.padding(
-                                start = 20.dp,
-                                end = 20.dp,
-                                top = 24.dp,
-                                bottom = 8.dp
-                            ),
-                            color = TextBlack,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        alerts.forEach { alert ->
-                            AlertResultItem(alert = alert)
-                        }
-                    }
                 }
             }
         }
     }
 }
 
-// ------------------------------------------------------------
-// ALERT RESULT ITEM
-// ------------------------------------------------------------
-
-@Composable
-private fun AlertResultItem(alert: AlertDto) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
-            .padding(16.dp)
-    ) {
-        Text(
-            text = alert.subject?.takeIf { it.isNotBlank() }
-                ?: "No subject",
-            color = TextBlack,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = alert.message?.takeIf { it.isNotBlank() }
-                ?: "No message",
-            color = HintGray,
-            fontSize = 14.sp
-        )
-
-        if (!alert.alertSendDate.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = alert.alertSendDate,
-                color = HintGray,
-                fontSize = 12.sp
-            )
-        }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(top = 12.dp),
-            color = FieldBorder
-        )
-    }
-}
-
-// ------------------------------------------------------------
-// FORM LABEL
-// ------------------------------------------------------------
+// ============================================================
+// LABEL
+// ============================================================
 
 @Composable
 private fun FormLabel(
@@ -475,9 +484,9 @@ private fun FormLabel(
     )
 }
 
-// ------------------------------------------------------------
-// SEARCH BY FIELD
-// ------------------------------------------------------------
+// ============================================================
+// KEYWORD FIELD
+// ============================================================
 
 @Composable
 private fun CompactTextField(
@@ -488,6 +497,10 @@ private fun CompactTextField(
 ) {
     Row(
         modifier = modifier
+            .border(
+                BorderStroke(1.dp, Color.LightGray),
+                RoundedCornerShape(24.dp)
+            )
             .clip(RoundedCornerShape(24.dp))
             .background(ScreenBackground)
             .padding(horizontal = 20.dp),
@@ -500,7 +513,7 @@ private fun CompactTextField(
             singleLine = true,
             textStyle = TextStyle(
                 color = TextBlack,
-                fontSize = 16.5.sp
+                fontSize = 16.sp
             ),
             decorationBox = { innerTextField ->
                 Box {
@@ -508,10 +521,9 @@ private fun CompactTextField(
                         Text(
                             text = placeholder,
                             color = HintGray,
-                            fontSize = 16.5.sp
+                            fontSize = 16.sp
                         )
                     }
-
                     innerTextField()
                 }
             }
@@ -519,9 +531,9 @@ private fun CompactTextField(
     }
 }
 
-// ------------------------------------------------------------
+// ============================================================
 // DATE FIELD
-// ------------------------------------------------------------
+// ============================================================
 
 @Composable
 private fun CompactDateField(
@@ -580,20 +592,20 @@ private fun CompactDateField(
                 modifier = Modifier.size(20.dp)
             )
 
-            Spacer(modifier = Modifier.size(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Text(
                 text = value.ifBlank { "Select date" },
                 color = if (value.isBlank()) HintGray else TextBlack,
-                fontSize = 16.5.sp
+                fontSize = 16.sp
             )
         }
     }
 }
 
-// ------------------------------------------------------------
+// ============================================================
 // DROPDOWN FIELD
-// ------------------------------------------------------------
+// ============================================================
 
 @Composable
 private fun CompactDropdown(
@@ -604,76 +616,115 @@ private fun CompactDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var fieldSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
 
-    Box(modifier = modifier) {
+    val selected = selectedValue.isNotBlank() &&
+            selectedValue != placeholder
+
+    Box(
+        modifier = modifier.onGloballyPositioned {
+            fieldSize = it.size
+        }
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .clickable {
-                    if (options.isNotEmpty()) {
-                        expanded = true
-                    }
+                    if (options.isNotEmpty()) expanded = !expanded
                 },
-            shape = RoundedCornerShape(24.dp),
-            color = ScreenBackground,
-            border = BorderStroke(1.dp, FieldBorder)
+            shape = RoundedCornerShape(22.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, Color.LightGray)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(
-                        start = 20.dp,
-                        end = 10.dp
-                    ),
+                    .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = selectedValue.ifEmpty { placeholder },
+                    text = selectedValue.ifBlank { placeholder },
                     modifier = Modifier.weight(1f),
-                    color = HintGray,
-                    fontSize = 14.sp,
+                    color = if (selected) Color(0xFF202020) else HintGray,
+                    fontSize = 13.sp,
                     maxLines = 1
                 )
 
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Select $placeholder",
-                    tint = HintGray,
-                    modifier = Modifier.size(18.dp)
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Open dropdown",
+                    tint = Color.DarkGray
                 )
             }
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = option,
-                            fontSize = 14.sp
+        if (expanded && fieldSize.width > 0) {
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, fieldSize.height),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(with(density) { fieldSize.width.toDp() })
+                        .heightIn(max = 280.dp),
+                    color = Color.White,
+                    shape = RoundedCornerShape(4.dp),
+                    border = BorderStroke(1.dp, Color(0xFFDDDDDD)),
+                    shadowElevation = 6.dp
+                ) {
+                    Column(
+                        modifier = Modifier.verticalScroll(
+                            rememberScrollState()
                         )
-                    },
-                    onClick = {
-                        onSelected(option)
-                        expanded = false
+                    ) {
+                        options.forEachIndexed { index, option ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onSelected(option)
+                                        expanded = false
+                                    }
+                                    .padding(
+                                        horizontal = 12.dp,
+                                        vertical = 12.dp
+                                    )
+                            ) {
+                                Text(
+                                    text = option,
+                                    color = Color(0xFF202020),
+                                    fontSize = 13.sp
+                                )
+                            }
+
+                            if (index < options.lastIndex) {
+                                HorizontalDivider(
+                                    color = Color(0xFFEEEEEE),
+                                    thickness = 0.5.dp
+                                )
+                            }
+                        }
                     }
-                )
+                }
             }
         }
     }
 }
 
-// ------------------------------------------------------------
-// BOTTOM NAVIGATION
-// ------------------------------------------------------------
+// ============================================================
+// BOTTOM NAVIGATION - SAME SIZE AS HOME
+// ============================================================
 
 @Composable
 private fun SearchBottomNavigation(
     selectedTab: String,
-    onTabClick: (String) -> Unit
+    onAlertsClick: () -> Unit,
+    onSubscriptionsClick: () -> Unit,
+    onForwardAlertsClick: () -> Unit,
+    onMenuClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -684,35 +735,39 @@ private fun SearchBottomNavigation(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .height(30.dp),
+                .height(44.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SearchBottomItem(
                 icon = R.drawable.ic_alert_list_bell,
+                description = "Alerts",
                 selected = selectedTab == "alerts",
-                onClick = { onTabClick("alerts") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onClick = onAlertsClick
             )
 
             SearchBottomItem(
                 icon = R.drawable.ic_alert_list_subscription,
+                description = "Subscriptions",
                 selected = selectedTab == "subscriptions",
-                onClick = { onTabClick("subscriptions") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onClick = onSubscriptionsClick
             )
 
             SearchBottomItem(
                 icon = R.drawable.ic_alert_list_bel,
-                selected = selectedTab == "notifications",
-                onClick = { onTabClick("notifications") },
-                modifier = Modifier.weight(1f)
+                description = "Forward Alerts",
+                selected = selectedTab == "forward",
+                modifier = Modifier.weight(1f),
+                onClick = onForwardAlertsClick
             )
 
             SearchBottomItem(
                 icon = R.drawable.ic_alert_list_menu,
+                description = "Menu",
                 selected = selectedTab == "menu",
-                onClick = { onTabClick("menu") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onClick = onMenuClick
             )
         }
     }
@@ -721,6 +776,7 @@ private fun SearchBottomNavigation(
 @Composable
 private fun SearchBottomItem(
     icon: Int,
+    description: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -731,15 +787,15 @@ private fun SearchBottomItem(
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Image(
             painter = painterResource(id = icon),
-            contentDescription = null,
+            contentDescription = description,
             colorFilter = ColorFilter.tint(
                 if (selected) SearchOrange else SearchGreen
             ),
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(24.dp)
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -755,23 +811,237 @@ private fun SearchBottomItem(
     }
 }
 
-// ------------------------------------------------------------
+// ============================================================
 // PREVIEW
-// ------------------------------------------------------------
+// ============================================================
 
-@Preview(
-    showBackground = true,
-    showSystemUi = true
-)
+// ============================================================
+// PREVIEW
+// ============================================================
+
+
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun SearchAlertsScreenPreview() {
-    val alertsViewModel: AlertsViewModel = viewModel()
-
     XpertAlertsTheme {
-        SearchAlertsScreen(
-            onBackClick = {},
-            onSearchClick = { _, _, _, _, _, _ -> },
-            alertsViewModel = alertsViewModel
-        )
+        var keyword by remember { mutableStateOf("") }
+        var startDate by remember { mutableStateOf("10/09/2026") }
+        var endDate by remember { mutableStateOf("10/12/2026") }
+        var viewBy by remember { mutableStateOf("- Select -") }
+        var application by remember {
+            mutableStateOf("- Select Application -")
+        }
+        var definition by remember {
+            mutableStateOf("- Select Alert Definition -")
+        }
+        var selectedTab by remember { mutableStateOf("alerts") }
+
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = ScreenBackground,
+            bottomBar = {
+                SearchBottomNavigation(
+                    selectedTab = selectedTab,
+                    onAlertsClick = { selectedTab = "alerts" },
+                    onSubscriptionsClick = {
+                        selectedTab = "subscriptions"
+                    },
+                    onForwardAlertsClick = {
+                        selectedTab = "forward"
+                    },
+                    onMenuClick = { selectedTab = "menu" }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(ScreenBackground)
+            ) {
+                // Toolbar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SearchOrange)
+                        .height(52.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Search Alerts",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Text(
+                        text = "Reset",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            keyword = ""
+                            startDate = ""
+                            endDate = ""
+                            viewBy = "- Select -"
+                            application = "- Select Application -"
+                            definition = "- Select Alert Definition -"
+                        }
+                    )
+                }
+
+                // Scrollable form
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 12.dp)
+                ) {
+                    CompactTextField(
+                        value = keyword,
+                        onValueChange = { keyword = it },
+                        placeholder = "Search By",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = 20.dp,
+                                end = 20.dp,
+                                top = 18.dp
+                            )
+                            .height(45.dp)
+                    )
+
+                    FormLabel(
+                        text = "Start Date",
+                        modifier = Modifier.padding(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = 18.dp
+                        )
+                    )
+
+                    CompactDateField(
+                        value = startDate,
+                        onDateSelected = { startDate = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 8.dp
+                            )
+                            .height(45.dp)
+                    )
+
+                    FormLabel(
+                        text = "End Date",
+                        modifier = Modifier.padding(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = 10.dp
+                        )
+                    )
+
+                    CompactDateField(
+                        value = endDate,
+                        onDateSelected = { endDate = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 8.dp
+                            )
+                            .height(45.dp)
+                    )
+
+                    CompactDropdown(
+                        selectedValue = viewBy,
+                        placeholder = "- Select -",
+                        options = listOf(
+                            "- Select -",
+                            "Alert Definition",
+                            "Application"
+                        ),
+                        onSelected = { viewBy = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 10.dp
+                            )
+                            .height(45.dp)
+                    )
+
+                    CompactDropdown(
+                        selectedValue = application,
+                        placeholder = "- Select Application -",
+                        options = listOf(
+                            "- Select Application -",
+                            "Preview Application"
+                        ),
+                        onSelected = { application = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 10.dp
+                            )
+                            .height(45.dp)
+                    )
+
+                    CompactDropdown(
+                        selectedValue = definition,
+                        placeholder = "- Select Alert Definition -",
+                        options = listOf(
+                            "- Select Alert Definition -",
+                            "Preview Alert Definition"
+                        ),
+                        onSelected = { definition = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 10.dp
+                            )
+                            .height(45.dp)
+                    )
+
+                    Button(
+                        onClick = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 20.dp,
+                                vertical = 18.dp
+                            )
+                            .height(46.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SearchOrange,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = "Search",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
     }
 }

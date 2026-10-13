@@ -7,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
 
     private const val DEFAULT_BASE_URL =
-        "https://www.xpertalerts.com/ams/webservice/"
+        "https://www.xpertalerts.com/ams/webservice/check/"
 
     fun createApiService(configuredUrl: String): ApiService {
         var normalizedUrl = configuredUrl.trim().trimEnd('/')
