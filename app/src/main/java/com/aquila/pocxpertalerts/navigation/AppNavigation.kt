@@ -42,6 +42,12 @@ import com.aquila.pocxpertalerts.ui.screens.SubscriptionsScreen
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModelFactory
 import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aquila.pocxpertalerts.data.remote.RetrofitClient
+import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
+import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
+import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModelFactory
+
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -487,11 +493,30 @@ fun AppNavigation() {
                 )
             }
 
-            // ----------------------------------------------------
-            // SUBSCRIPTIONS
-            // ----------------------------------------------------
+// ----------------------------------------------------
+// SUBSCRIPTIONS
+// ----------------------------------------------------
 
             composable(Screen.Subscriptions.route) {
+
+                val user = loggedInUser
+
+                val subscriptionRepository = remember {
+                    SubscriptionRepositoryImpl(
+                        RetrofitClient.apiService
+                    )
+                }
+
+                val subscriptionFactory = remember(subscriptionRepository) {
+                    SubscriptionsViewModelFactory(
+                        subscriptionRepository
+                    )
+                }
+
+                val subscriptionViewModel: SubscriptionsViewModel = viewModel(
+                    factory = subscriptionFactory
+                )
+
                 SubscriptionsScreen(
                     onBackClick = {
                         navController.popBackStack()
@@ -503,18 +528,20 @@ fun AppNavigation() {
                     },
                     onEditClick = { subscriptionId ->
                         navController.navigate(
-                            Screen.SubscriptionDetails.createRoute(
-                                subscriptionId
-                            )
+                            Screen.SubscriptionDetails.createRoute(subscriptionId)
                         )
                     },
                     onSearchClick = {
                         navController.navigate(
                             Screen.SearchSubscription.route
                         )
-                    }
+                    },
+                    viewModel = subscriptionViewModel,
+                    userId = user?.id?.toString().orEmpty(),
+                    sessionId = user?.sessionId.orEmpty()
                 )
             }
+
 
             // ----------------------------------------------------
             // SUBSCRIPTION DETAILS
