@@ -4,6 +4,7 @@ package com.aquila.pocxpertalerts.data.model
 import com.google.gson.annotations.SerializedName
 
 data class SubscriptionDto(
+
     @SerializedName("userSubId")
     val userSubId: Long = 0L,
 
@@ -16,7 +17,8 @@ data class SubscriptionDto(
     @SerializedName("alertDefName")
     val alertDefName: String? = null,
 
-    @SerializedName("alertName")
+    // API uses "alerName", not "alertName".
+    @SerializedName("alerName")
     val alertName: String? = null,
 
     @SerializedName("alertFlag")
@@ -25,6 +27,11 @@ data class SubscriptionDto(
     @SerializedName("device")
     val device: String? = null,
 
+    // "email" represents the Mail notification flag: Yes/No.
+    @SerializedName("email")
+    val emailEnabled: String? = null,
+
+    // Actual email address, if returned by the details API.
     @SerializedName("emailId")
     val emailId: String? = null,
 

@@ -1,15 +1,14 @@
 
 package com.aquila.pocxpertalerts.ui.screens
 
+import android.app.Activity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -21,17 +20,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.aquila.pocxpertalerts.data.model.SubscriptionDto
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
@@ -40,12 +43,7 @@ import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.ui.theme.XpertPurple
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
-import android.app.Activity
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.graphics.toArgb
-import androidx.core.view.WindowCompat
+
 @Composable
 fun SubscriptionsScreen(
     onBackClick: () -> Unit,
@@ -58,29 +56,23 @@ fun SubscriptionsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Set the status bar color to match the toolbar.
     val view = LocalView.current
 
     SideEffect {
         val activity = view.context as? Activity
         activity?.window?.let { window ->
             window.statusBarColor = XpertOrange.toArgb()
-
             WindowCompat.getInsetsController(window, view)
                 .isAppearanceLightStatusBars = false
         }
     }
 
-    var searchText by rememberSaveable {
-        mutableStateOf("")
-    }
-
+    // Load subscriptions from the existing API.
     LaunchedEffect(userId, sessionId) {
-        viewModel.loadSubscriptions(
+        viewModel.loadInitialSubscriptions(
             userId = userId,
-            sessionId = sessionId,
-            applicationId = "0",
-            searchName = "",
-            searchActive = 2
+            sessionId = sessionId
         )
     }
 
@@ -95,13 +87,13 @@ fun SubscriptionsScreen(
                 .padding(innerPadding)
         ) {
 
-            // Toolbar: same height and orange theme as HomeScreen
+            // Top toolbar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(56.dp)
                     .background(XpertOrange)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
@@ -152,7 +144,7 @@ fun SubscriptionsScreen(
                     .background(White)
             ) {
 
-                // Search bar styled consistently with HomeScreen
+                // Entire search bar opens SearchSubscriptionScreen.
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -162,12 +154,15 @@ fun SubscriptionsScreen(
                             top = 18.dp,
                             bottom = 14.dp
                         )
-                        .height(54.dp),
+                        .height(54.dp)
+                        .clickable(
+                            onClick = onSearchClick
+                        ),
                     shape = RoundedCornerShape(28.dp),
                     color = White,
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         width = 1.5.dp,
-                        color = XpertPurple
+                        color = Color.Gray
                     )
                 ) {
                     Row(
@@ -176,68 +171,25 @@ fun SubscriptionsScreen(
                             .padding(horizontal = 18.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
+                        Text(
+                            text = "Search Subscriptions",
                             modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (searchText.isEmpty()) {
-                                Text(
-                                    text = "Search Subscriptions",
-                                    color = TextGray,
-                                    fontSize = 16.sp
-                                )
-                            }
-
-                            BasicTextField(
-                                value = searchText,
-                                onValueChange = {
-                                    searchText = it
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                textStyle = TextStyle(
-                                    color = Color.DarkGray,
-                                    fontSize = 16.sp
-                                ),
-                                keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Search
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onSearch = {
-                                        viewModel.loadSubscriptions(
-                                            userId = userId,
-                                            sessionId = sessionId,
-                                            applicationId = "0",
-                                            searchName = searchText.trim(),
-                                            searchActive = 2
-                                        )
-                                    }
-                                )
-                            )
-                        }
+                            color = TextGray,
+                            fontSize = 18.sp
+                        )
 
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search subscriptions",
-                            tint = TextGray,
-                            modifier = Modifier
-                                .size(25.dp)
-                                .clickable {
-                                    viewModel.loadSubscriptions(
-                                        userId = userId,
-                                        sessionId = sessionId,
-                                        applicationId = "0",
-                                        searchName = searchText.trim(),
-                                        searchActive = 2
-                                    )
-                                }
+                            contentDescription = "Open Search Subscriptions",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(27.dp)
                         )
                     }
                 }
 
-                // Subscription list, loading, and error states
+                // Loading, error, empty and subscription-list states.
                 when {
-                    uiState.isLoading -> {
+                    uiState.isLoading && uiState.subscriptions.isEmpty() -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -251,6 +203,8 @@ fun SubscriptionsScreen(
                     }
 
                     uiState.errorMessage != null -> {
+
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -279,7 +233,7 @@ fun SubscriptionsScreen(
                                         userId = userId,
                                         sessionId = sessionId,
                                         applicationId = "0",
-                                        searchName = searchText.trim(),
+                                        searchName = "",
                                         searchActive = 2
                                     )
                                 }
@@ -407,8 +361,7 @@ private fun SubscriptionRow(
     }
 }
 
-// Preview using the project's existing theme
-
+// Preview only: sample rows are not used by the real API screen.
 @Preview(
     name = "XpertAlerts - My Subscriptions",
     showBackground = true,
@@ -433,15 +386,11 @@ private fun SubscriptionLayoutPreview(
             .fillMaxSize()
             .background(White)
     ) {
-
-        // ---------------------------------------------
-        // TOP TOOLBAR - SAME HEIGHT AS HOME SCREEN
-        // ---------------------------------------------
-
+        // Toolbar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(56.dp)
                 .background(XpertOrange)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -450,9 +399,7 @@ private fun SubscriptionLayoutPreview(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
                 tint = White,
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable { }
+                modifier = Modifier.size(28.dp)
             )
 
             Box(
@@ -471,8 +418,7 @@ private fun SubscriptionLayoutPreview(
             Box(
                 modifier = Modifier
                     .width(64.dp)
-                    .fillMaxHeight()
-                    .clickable { },
+                    .fillMaxHeight(),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Text(
@@ -484,10 +430,7 @@ private fun SubscriptionLayoutPreview(
             }
         }
 
-        // ---------------------------------------------
-        // SEARCH BAR - SAME STYLE AS HOME SCREEN
-        // ---------------------------------------------
-
+        // Entire preview search bar is clickable.
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -498,9 +441,7 @@ private fun SubscriptionLayoutPreview(
                     bottom = 18.dp
                 )
                 .height(62.dp)
-                .clickable {
-                    onSearchClick()
-                },
+                .clickable(onClick = onSearchClick),
             shape = RoundedCornerShape(28.dp),
             color = White,
             border = BorderStroke(
@@ -524,15 +465,11 @@ private fun SubscriptionLayoutPreview(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search Subscriptions",
-                    tint = TextGray,
+                    tint = XpertPurple,
                     modifier = Modifier.size(27.dp)
                 )
             }
         }
-
-        // ---------------------------------------------
-        // SUBSCRIPTION LIST - PREVIEW ONLY
-        // ---------------------------------------------
 
         val previewRows = listOf(
             "Caterxpert - alcohol_change_request_0_30" to "CaterXpert",
@@ -547,16 +484,15 @@ private fun SubscriptionLayoutPreview(
 
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .weight(1f)
                 .background(White),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(previewRows) { row ->
-
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { }
                         .padding(start = 26.dp, end = 12.dp)
                 ) {
                     Row(
@@ -573,8 +509,7 @@ private fun SubscriptionLayoutPreview(
                                 text = row.first,
                                 color = Color(0xFF555555),
                                 fontSize = 14.sp,
-                                lineHeight = 19.sp,
-                                fontWeight = FontWeight.Normal
+                                lineHeight = 19.sp
                             )
 
                             Spacer(

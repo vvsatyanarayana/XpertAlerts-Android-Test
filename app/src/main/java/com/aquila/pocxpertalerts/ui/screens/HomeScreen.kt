@@ -473,14 +473,14 @@ fun AlertsContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 16.dp,
-                    bottom = 12.dp
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 18.dp,
+                    bottom = 14.dp
                 )
                 .height(54.dp)
                 .clickable(onClick = onSearchClick),
-            shape = RoundedCornerShape(30.dp),
+            shape = RoundedCornerShape(28.dp),
             color = White,
             border = BorderStroke(1.5.dp, Color.Gray)
         ) {
@@ -493,15 +493,15 @@ fun AlertsContent(
                 Text(
                     text = "Search Alerts",
                     modifier = Modifier.weight(1f),
-                    color = Color.LightGray,
-                    fontSize = 22.sp
+                    color = Color.Gray,
+                    fontSize = 18.sp
                 )
 
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search Alerts",
-                    tint = Color.LightGray,
-                    modifier = Modifier.size(30.dp)
+                    tint = Color.Gray,
+                    modifier = Modifier.size(25.dp)
                 )
             }
         }

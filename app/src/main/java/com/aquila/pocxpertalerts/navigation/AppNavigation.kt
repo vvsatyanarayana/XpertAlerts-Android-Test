@@ -47,7 +47,12 @@ import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModelFactory
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.google.gson.JsonElement
+import com.aquila.pocxpertalerts.ui.screens.ApplicationOption
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -493,12 +498,12 @@ fun AppNavigation() {
                 )
             }
 
-// ----------------------------------------------------
-// SUBSCRIPTIONS
-// ----------------------------------------------------
+
+            // ----------------------------------------------------
+            // SUBSCRIPTIONS
+            // ----------------------------------------------------
 
             composable(Screen.Subscriptions.route) {
-
                 val user = loggedInUser
 
                 val subscriptionRepository = remember {
@@ -517,6 +522,8 @@ fun AppNavigation() {
                     factory = subscriptionFactory
                 )
 
+
+
                 SubscriptionsScreen(
                     onBackClick = {
                         navController.popBackStack()
@@ -527,9 +534,19 @@ fun AppNavigation() {
                         )
                     },
                     onEditClick = { subscriptionId ->
-                        navController.navigate(
-                            Screen.SubscriptionDetails.createRoute(subscriptionId)
+
+                        android.util.Log.d(
+                            "SubscriptionNavigation",
+                            "Opening subscription details for ID: $subscriptionId"
                         )
+
+                        navController.navigate(
+                            Screen.SubscriptionDetails.createRoute(
+                                subscriptionId
+                            )
+                        ) {
+                            launchSingleTop = true
+                        }
                     },
                     onSearchClick = {
                         navController.navigate(
@@ -542,37 +559,249 @@ fun AppNavigation() {
                 )
             }
 
-
             // ----------------------------------------------------
             // SUBSCRIPTION DETAILS
             // ----------------------------------------------------
 
-            composable(Screen.SubscriptionDetails.route) {
+            composable(
+                route = Screen.SubscriptionDetails.route,
+                arguments = listOf(
+                    navArgument("subscriptionId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { entry ->
+
+                val subscriptionId = entry.arguments
+                    ?.getString("subscriptionId")
+                    ?: "new"
+
+                val user = loggedInUser
+
+                // Reuse the ViewModel owned by the subscriptions screen.
+                val subscriptionsEntry = remember(navController) {
+                    navController.getBackStackEntry(
+                        Screen.Subscriptions.route
+                    )
+                }
+
+                val subscriptionViewModel: SubscriptionsViewModel = viewModel(
+                    viewModelStoreOwner = subscriptionsEntry
+                )
+
                 SubscriptionDetailsScreen(
+                    subscriptionId = subscriptionId,
+                    viewModel = subscriptionViewModel,
+                    userId = user?.id?.toString().orEmpty(),
+                    userTypeId = user?.userTypeId?.toString().orEmpty(),
+                    sessionId = user?.sessionId.orEmpty(),
                     onBackClick = {
                         navController.popBackStack()
                     },
-                    onSaveClick = {
+
+                    onSaveSuccess = {
+                        // Clear the previous save-success message first.
+                        subscriptionViewModel.clearMessages()
+
+                        // Refresh the subscriptions list after saving.
+                        subscriptionViewModel.loadSubscriptions(
+                            userId = user?.id?.toString().orEmpty(),
+                            sessionId = user?.sessionId.orEmpty(),
+                            applicationId = "0",
+                            searchName = "",
+                            searchActive = 2
+                        )
+
+                        // Return to the subscriptions list.
                         navController.popBackStack()
                     }
+
                 )
             }
 
-            // ----------------------------------------------------
-            // SEARCH SUBSCRIPTIONS
-            // ----------------------------------------------------
+
+/// ----------------------------------------------------
+// SEARCH SUBSCRIPTIONS
+// ----------------------------------------------------
 
             composable(Screen.SearchSubscription.route) {
+
+                val subscriptionsEntry = remember(navController) {
+                    navController.getBackStackEntry(
+                        Screen.Subscriptions.route
+                    )
+                }
+
+                // Reuse the ViewModel from My Subscriptions.
+                val subscriptionViewModel: SubscriptionsViewModel =
+                    viewModel(
+                        viewModelStoreOwner = subscriptionsEntry
+                    )
+
+                var applicationOptions by remember {
+                    mutableStateOf<List<ApplicationOption>>(emptyList())
+                }
+
+                var isApplicationsLoading by remember {
+                    mutableStateOf(false)
+                }
+
+                var applicationsError by remember {
+                    mutableStateOf<String?>(null)
+                }
+
+                var applicationRetryKey by remember {
+                    mutableStateOf(0)
+                }
+
+                val userId = loggedInUser?.id?.toString().orEmpty()
+                val sessionId = loggedInUser?.sessionId.orEmpty()
+                val userTypeId = loggedInUser?.userTypeId?.toString().orEmpty()
+
+                // Load applications from the real API.
+                LaunchedEffect(
+                    userId,
+                    sessionId,
+                    userTypeId,
+                    applicationRetryKey
+                ) {
+                    if (
+                        userId.isBlank() ||
+                        sessionId.isBlank() ||
+                        userTypeId.isBlank()
+                    ) {
+                        applicationOptions = emptyList()
+                        applicationsError =
+                            "User ID, user type ID, or session ID is missing."
+                        isApplicationsLoading = false
+                        return@LaunchedEffect
+                    }
+
+                    isApplicationsLoading = true
+                    applicationsError = null
+
+                    try {
+                        val response =
+                            RetrofitClient.apiService.getApplicationList(
+                                userId = userId,
+                                userTypeId = userTypeId,
+                                sessionId = sessionId
+                            )
+
+                        android.util.Log.d(
+                            "SubscriptionSearch",
+                            "getApplicationList response: $response"
+                        )
+
+                        val parsedApplications = mutableListOf<ApplicationOption>()
+
+                        if (response.isJsonArray) {
+                            response.asJsonArray.forEach { item ->
+                                if (item.isJsonObject) {
+                                    val obj = item.asJsonObject
+
+                                    val idElement = obj.get("id")
+                                    val nameElement = obj.get("name")
+
+                                    val id = if (
+                                        idElement != null &&
+                                        !idElement.isJsonNull
+                                    ) {
+                                        idElement.asString
+                                    } else {
+                                        null
+                                    }
+
+                                    val name = if (
+                                        nameElement != null &&
+                                        !nameElement.isJsonNull
+                                    ) {
+                                        nameElement.asString
+                                    } else {
+                                        null
+                                    }
+
+                                    if (
+                                        !id.isNullOrBlank() &&
+                                        !name.isNullOrBlank()
+                                    ) {
+                                        parsedApplications.add(
+                                            ApplicationOption(
+                                                id = id,
+                                                name = name
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            applicationOptions = parsedApplications
+
+                            if (parsedApplications.isEmpty()) {
+                                applicationsError =
+                                    "The server returned no application records."
+                            }
+
+                            android.util.Log.d(
+                                "SubscriptionSearch",
+                                "Parsed applications: $applicationOptions"
+                            )
+                        } else {
+                            applicationOptions = emptyList()
+                            applicationsError =
+                                "Unexpected response from the application API."
+                        }
+                    } catch (e: Exception) {
+                        applicationOptions = emptyList()
+                        applicationsError =
+                            e.message ?: "Unable to load applications."
+
+                        android.util.Log.e(
+                            "SubscriptionSearch",
+                            "Failed to load applications",
+                            e
+                        )
+                    } finally {
+                        isApplicationsLoading = false
+                    }
+                }
+
                 SearchSubscriptionScreen(
                     onBackClick = {
                         navController.popBackStack()
                     },
-                    onSearchClick = {
+
+
+                    onSearchClick = { alertName, applicationId, searchActive ->
+
+                        android.util.Log.d(
+                            "SubscriptionSearch",
+                            "Search filters: name=$alertName, " +
+                                    "applicationId=$applicationId, " +
+                                    "searchActive=$searchActive"
+                        )
+
+                        subscriptionViewModel.loadSubscriptions(
+                            userId = userId,
+                            sessionId = sessionId,
+                            applicationId = applicationId,
+                            searchName = alertName.trim(),
+                            searchActive = searchActive
+                        )
+
                         navController.popBackStack()
+                    },
+
+
+                    applications = applicationOptions,
+                    isApplicationsLoading = isApplicationsLoading,
+                    applicationsError = applicationsError,
+
+                    onRetryApplications = {
+                        applicationRetryKey++
                     }
                 )
             }
-
             // ----------------------------------------------------
             // FORWARD ALERTS
             // ----------------------------------------------------

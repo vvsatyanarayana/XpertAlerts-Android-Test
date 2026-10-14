@@ -138,8 +138,14 @@ class AlertsViewModel(
                         onSuccess(response)
                     },
                     onFailure = { error ->
-                        _errorMessage.value = error.message ?: "Unable to retrieve alerts"
-                        Log.e("AlertsAPI", "Request failed: ${error.message}", error)
+                        _errorMessage.value =
+                            error.message ?: "Unable to retrieve alerts."
+
+                        Log.e(
+                            "AlertsAPI",
+                            "getAlertsForDevices failed",
+                            error
+                        )
                     }
                 )
             } catch (error: Exception) {

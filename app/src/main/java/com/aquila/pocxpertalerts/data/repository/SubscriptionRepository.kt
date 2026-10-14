@@ -1,4 +1,3 @@
-
 package com.aquila.pocxpertalerts.data.repository
 
 import com.aquila.pocxpertalerts.data.model.SubscriptionDto
@@ -31,6 +30,10 @@ interface SubscriptionRepository {
         sessionId: String
     ): Result<List<SubscriptionAlertDefinition>>
 
+    /**
+     * Returns true if the backend reports an existing duplicate.
+     * Returns false if the backend confirms there is no duplicate.
+     */
     suspend fun checkDuplicate(
         userId: String,
         applicationId: String,
