@@ -1,5 +1,7 @@
-package com.aquila.pocxpertalerts.ui.screens
 
+package com.aquila.pocxpertalerts.ui.screens
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,26 +10,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -39,693 +41,407 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 
-// =========================================================
-// COLORS
-// =========================================================
+private val CreateForwardOrange = Color(0xFFED741C)
 
-private val XpertOrange = Color(0xFFED741C)
-private val XpertPurple = Color(0xFF3F237D)
-private val ScreenBackground = Color(0xFFF7F7F7)
-private val DarkText = Color(0xFF222222)
-private val GrayText = Color(0xFF777777)
+data class ForwardApplicationOption(
+    val id: String,
+    val name: String
+)
 
-
-// =========================================================
-// FORWARD ALERT DETAILS SCREEN
-// =========================================================
+data class ForwardUserOption(
+    val id: String,
+    val name: String,
+    val email: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForwardAlertDetailsScreen(
     onBackClick: () -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: () -> Unit,
+    emailFromApi: String? = null,
+    applications: List<ForwardApplicationOption> = emptyList(),
+    users: List<ForwardUserOption> = emptyList(),
+    onApplicationSelected: (ForwardApplicationOption) -> Unit = {},
+    onUserSelected: (ForwardUserOption) -> Unit = {},
+    onMapClick: (
+        applicationId: String,
+        userId: String,
+        email: String,
+        sortOrder: String,
+        active: Boolean
+    ) -> Unit = { _, _, _, _, _ -> onSaveClick() }
 ) {
-
-    // =====================================================
-    // FORM STATE
-    // =====================================================
-
-    var forwardAlert by remember {
-        mutableStateOf("")
+    var selectedApplication by remember {
+        mutableStateOf<ForwardApplicationOption?>(null)
     }
-
-    var application by remember {
-        mutableStateOf("")
+    var selectedUser by remember {
+        mutableStateOf<ForwardUserOption?>(null)
     }
+    var email by remember { mutableStateOf("") }
+    var sortOrder by remember { mutableStateOf("") }
+    var active by remember { mutableStateOf(false) }
 
-    var email by remember {
-        mutableStateOf("")
+    var applicationMenuOpen by remember { mutableStateOf(false) }
+    var userDialogOpen by remember { mutableStateOf(false) }
+    var userSearch by remember { mutableStateOf("") }
+    var showValidation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(emailFromApi) {
+        if (emailFromApi != null) {
+            email = emailFromApi
+        }
     }
-
-    var sortOrder by remember {
-        mutableStateOf("")
-    }
-
-    var activeStatus by remember {
-        mutableStateOf("Active")
-    }
-
-    var enabled by remember {
-        mutableStateOf(true)
-    }
-
-
-    // =====================================================
-    // DROPDOWN STATE
-    // =====================================================
-
-    var forwardAlertExpanded by remember {
-        mutableStateOf(false)
-    }
-
-    var applicationExpanded by remember {
-        mutableStateOf(false)
-    }
-
-
-    val forwardAlertOptions = listOf(
-        "System Alert",
-        "Important Update",
-        "New Information"
-    )
-
-    val applicationOptions = listOf(
-        "Xpert Alerts",
-        "Operations",
-        "Monitoring",
-        "Administration"
-    )
-
-
-    // =====================================================
-    // SCREEN
-    // =====================================================
 
     Scaffold(
-
-        containerColor =
-            ScreenBackground,
-
         topBar = {
-
             TopAppBar(
-
                 title = {
-
                     Text(
-                        text = "Create Forward Alert",
+                        "Create Forward Alert",
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                 },
-
                 navigationIcon = {
-
-                    androidx.compose.material3.IconButton(
-                        onClick = onBackClick
-                    ) {
-
+                    IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector =
-                                Icons.Default.ArrowBack,
-
-                            contentDescription =
-                                "Back"
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
                         )
                     }
                 },
-
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor =
-                            Color.White,
-
-                        titleContentColor =
-                            XpertPurple,
-
-                        navigationIconContentColor =
-                            XpertPurple
-                    )
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = CreateForwardOrange
+                )
             )
         }
-    ) { innerPadding ->
-
+    ) { padding ->
         Column(
-
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(
-                    rememberScrollState()
-                )
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-
-            verticalArrangement =
-                Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-
-            // =================================================
-            // SCREEN DESCRIPTION
-            // =================================================
-
+            // Application dropdown
             Text(
-                text =
-                    "Configure a forward alert and its recipient.",
-
-                fontSize =
-                    14.sp,
-
-                color =
-                    GrayText
+                "Application",
+                fontWeight = FontWeight.Medium
             )
 
-
-            // =================================================
-            // FORWARD ALERT DROPDOWN
-            // =================================================
-
-            ExposedDropdownMenuBox(
-
-                expanded =
-                    forwardAlertExpanded,
-
-                onExpandedChange = {
-
-                    forwardAlertExpanded =
-                        !forwardAlertExpanded
-                }
-            ) {
-
+            Column {
                 OutlinedTextField(
-
-                    value =
-                        forwardAlert,
-
+                    value = selectedApplication?.name.orEmpty(),
                     onValueChange = {},
-
                     readOnly = true,
-
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-
-                    label = {
-                        Text("Forward Alert")
-                    },
-
+                    enabled = true,
                     placeholder = {
-                        Text("Select Forward Alert")
+                        Text("- Select Application -")
                     },
-
                     trailingIcon = {
-
-                        ExposedDropdownMenuDefaults
-                            .TrailingIcon(
-                                expanded =
-                                    forwardAlertExpanded
-                            )
-                    }
-                )
-
-
-                DropdownMenu(
-
-                    expanded =
-                        forwardAlertExpanded,
-
-                    onDismissRequest = {
-
-                        forwardAlertExpanded =
-                            false
-                    },
-
-                    modifier =
-                        Modifier.fillMaxWidth()
-                ) {
-
-                    forwardAlertOptions.forEach { option ->
-
-                        DropdownMenuItem(
-
-                            text = {
-                                Text(option)
-                            },
-
+                        IconButton(
                             onClick = {
-
-                                forwardAlert =
-                                    option
-
-                                forwardAlertExpanded =
-                                    false
+                                applicationMenuOpen = !applicationMenuOpen
                             }
-                        )
-                    }
-                }
-            }
-
-
-            // =================================================
-            // APPLICATION DROPDOWN
-            // =================================================
-
-            ExposedDropdownMenuBox(
-
-                expanded =
-                    applicationExpanded,
-
-                onExpandedChange = {
-
-                    applicationExpanded =
-                        !applicationExpanded
-                }
-            ) {
-
-                OutlinedTextField(
-
-                    value =
-                        application,
-
-                    onValueChange = {},
-
-                    readOnly = true,
-
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-
-                    label = {
-                        Text("Application")
-                    },
-
-                    placeholder = {
-                        Text("Select Application")
-                    },
-
-                    trailingIcon = {
-
-                        ExposedDropdownMenuDefaults
-                            .TrailingIcon(
-                                expanded =
-                                    applicationExpanded
+                        ) {
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = "Choose application"
                             )
-                    }
-                )
-
-
-                DropdownMenu(
-
-                    expanded =
-                        applicationExpanded,
-
-                    onDismissRequest = {
-
-                        applicationExpanded =
-                            false
+                        }
                     },
-
-                    modifier =
-                        Modifier.fillMaxWidth()
-                ) {
-
-                    applicationOptions.forEach { option ->
-
-                        DropdownMenuItem(
-
-                            text = {
-                                Text(option)
-                            },
-
-                            onClick = {
-
-                                application =
-                                    option
-
-                                applicationExpanded =
-                                    false
-                            }
-                        )
-                    }
-                }
-            }
-
-
-            // =================================================
-            // EMAIL
-            // =================================================
-
-            OutlinedTextField(
-
-                value =
-                    email,
-
-                onValueChange = {
-                    email = it
-                },
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                singleLine = true,
-
-                label = {
-                    Text("Email")
-                },
-
-                placeholder = {
-                    Text("Enter email address")
-                }
-            )
-
-
-            // =================================================
-            // SORT ORDER
-            // =================================================
-
-            OutlinedTextField(
-
-                value =
-                    sortOrder,
-
-                onValueChange = {
-
-                    if (
-                        it.all { char ->
-                            char.isDigit()
-                        }
-                    ) {
-                        sortOrder = it
-                    }
-                },
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                singleLine = true,
-
-                label = {
-                    Text("Sort Order")
-                },
-
-                placeholder = {
-                    Text("Enter sort order")
-                }
-            )
-
-
-            // =================================================
-            // ACTIVE / INACTIVE
-            // =================================================
-
-            Text(
-                text =
-                    "Status",
-
-                fontSize =
-                    16.sp,
-
-                fontWeight =
-                    FontWeight.SemiBold,
-
-                color =
-                    DarkText
-            )
-
-
-            Row(
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Row(
-                    verticalAlignment =
-                        Alignment.CenterVertically,
-
-                    modifier =
-                        Modifier.weight(1f)
-                ) {
-
-                    RadioButton(
-
-                        selected =
-                            activeStatus == "Active",
-
-                        onClick = {
-                            activeStatus =
-                                "Active"
-                        }
-                    )
-
-                    Text(
-                        text = "Active",
-                        color = DarkText
-                    )
-                }
-
-
-                Row(
-                    verticalAlignment =
-                        Alignment.CenterVertically,
-
-                    modifier =
-                        Modifier.weight(1f)
-                ) {
-
-                    RadioButton(
-
-                        selected =
-                            activeStatus == "Inactive",
-
-                        onClick = {
-                            activeStatus =
-                                "Inactive"
-                        }
-                    )
-
-                    Text(
-                        text = "Inactive",
-                        color = DarkText
-                    )
-                }
-            }
-
-
-            // =================================================
-            // ENABLE / DISABLE
-            // =================================================
-
-            Row(
-
-                modifier =
-                    Modifier
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            vertical = 4.dp
-                        ),
+                        .clickable {
+                            applicationMenuOpen = true
+                        },
+                    shape = RoundedCornerShape(12.dp)
+                )
 
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Column(
-                    modifier =
-                        Modifier.weight(1f)
-                ) {
-
-                    Text(
-                        text =
-                            "Enable Forward Alert",
-
-                        fontSize =
-                            16.sp,
-
-                        fontWeight =
-                            FontWeight.SemiBold,
-
-                        color =
-                            DarkText
-                    )
-
-                    Text(
-                        text =
-                            if (enabled) {
-                                "Forward alert is enabled"
-                            } else {
-                                "Forward alert is disabled"
-                            },
-
-                        fontSize =
-                            13.sp,
-
-                        color =
-                            GrayText
+                if (applicationMenuOpen) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            applicationMenuOpen = false
+                        },
+                        title = { Text("Select Application") },
+                        text = {
+                            Column {
+                                if (applications.isEmpty()) {
+                                    Text("No applications available")
+                                } else {
+                                    applications.forEach { application ->
+                                        TextButton(
+                                            onClick = {
+                                                selectedApplication =
+                                                    application
+                                                selectedUser = null
+                                                email = ""
+                                                applicationMenuOpen = false
+                                                onApplicationSelected(
+                                                    application
+                                                )
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                application.name,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    applicationMenuOpen = false
+                                }
+                            ) {
+                                Text("Close")
+                            }
+                        }
                     )
                 }
+            }
 
+            // User picker
+            Text(
+                "User",
+                fontWeight = FontWeight.Medium
+            )
+
+            OutlinedTextField(
+                value = selectedUser?.name.orEmpty(),
+                onValueChange = {},
+                readOnly = true,
+                placeholder = { Text("- Select User -") },
+                trailingIcon = {
+                    IconButton(onClick = { userDialogOpen = true }) {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = "Choose user"
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        userDialogOpen = true
+                    },
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            // Email
+            Text(
+                "Email Address",
+                fontWeight = FontWeight.Medium
+            )
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                placeholder = { Text("Email Address") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            // Sort order
+            Text(
+                "Sort Order",
+                fontWeight = FontWeight.Medium
+            )
+
+            OutlinedTextField(
+                value = sortOrder,
+                onValueChange = { value ->
+                    if (value.all { it.isDigit() }) {
+                        sortOrder = value
+                    }
+                },
+                placeholder = { Text("Sort Order") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            // Activate
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Activate",
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        if (active) "Yes" else "No",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
 
                 Switch(
-
-                    checked =
-                        enabled,
-
-                    onCheckedChange = {
-                        enabled = it
-                    }
+                    checked = active,
+                    onCheckedChange = { active = it }
                 )
             }
 
-
-            // =================================================
-            // MAP PLACEHOLDER
-            // =================================================
-
-            Text(
-                text =
-                    "Location",
-
-                fontSize =
-                    16.sp,
-
-                fontWeight =
-                    FontWeight.SemiBold,
-
-                color =
-                    DarkText
-            )
-
-
-            OutlinedButton(
-
-                onClick = {
-                    // Future Google Maps integration
-                },
-
-                modifier =
-                    Modifier.fillMaxWidth()
-            ) {
-
-                Icon(
-                    imageVector =
-                        Icons.Default.LocationOn,
-
-                    contentDescription =
-                        "Map"
-                )
-
-                Spacer(
-                    modifier =
-                        Modifier.width(8.dp)
-                )
-
+            if (showValidation) {
                 Text(
-                    text =
-                        "Select Location on Map"
+                    text = "Select an application and user, and enter a valid email address.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp
                 )
             }
 
-
-            Text(
-                text =
-                    "Map integration will be added in a future phase.",
-
-                fontSize =
-                    12.sp,
-
-                color =
-                    GrayText
-            )
+            Spacer(Modifier.height(4.dp))
 
 
-            Spacer(
-                modifier =
-                    Modifier.height(8.dp)
-            )
+            Button(
+                onClick = {
+                    val application = selectedApplication
+                    val user = selectedUser
+                    val validEmail = android.util.Patterns.EMAIL_ADDRESS
+                        .matcher(email.trim())
+                        .matches()
 
+                    when {
+                        application == null -> {
+                            showValidation = true
+                        }
 
-            // =================================================
-            // ACTION BUTTONS
-            // =================================================
+                        user == null -> {
+                            showValidation = true
+                        }
 
-            Row(
+                        !validEmail -> {
+                            showValidation = true
+                        }
 
-                modifier =
-                    Modifier.fillMaxWidth(),
+                        else -> {
+                            showValidation = false
 
-                horizontalArrangement =
-                    Arrangement.spacedBy(12.dp)
+                            android.util.Log.d(
+                                "ForwardAlerts",
+                                "Map clicked: applicationId=${application.id}, " +
+                                        "mappedUserId=${user.id}, email=$email"
+                            )
+
+                            onMapClick(
+                                application.id,
+                                user.id,
+                                email.trim(),
+                                sortOrder,
+                                active
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CreateForwardOrange
+                )
             ) {
-
-                OutlinedButton(
-
-                    onClick =
-                        onBackClick,
-
-                    modifier =
-                        Modifier.weight(1f)
-                ) {
-
-                    Text("Cancel")
-                }
-
-
-                Button(
-
-                    onClick =
-                        onSaveClick,
-
-                    modifier =
-                        Modifier.weight(1f),
-
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor =
-                                XpertOrange
-                        )
-                ) {
-
-                    Text("Save")
-                }
+                Text(
+                    text = "Map",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-
-            Spacer(
-                modifier =
-                    Modifier.height(12.dp)
-            )
         }
     }
-}
 
+    // Searchable user-selection dialog
+    if (userDialogOpen) {
+        val filteredUsers = users.filter {
+            it.name.contains(userSearch, ignoreCase = true) ||
+                    it.email.contains(userSearch, ignoreCase = true)
+        }
 
-// =========================================================
-// PREVIEW
-// =========================================================
+        AlertDialog(
+            onDismissRequest = {
+                userDialogOpen = false
+                userSearch = ""
+            },
+            title = { Text("Select User") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = userSearch,
+                        onValueChange = { userSearch = it },
+                        placeholder = { Text("Search user") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-@Preview(
-    showBackground = true,
-    showSystemUi = true,
+                    Spacer(Modifier.height(8.dp))
+                    Divider()
 
-)
-@Composable
-fun ForwardAlertDetailsScreenPreview() {
-
-    XpertAlertsTheme {
-
-        ForwardAlertDetailsScreen(
-
-            onBackClick = {},
-
-            onSaveClick = {}
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        if (filteredUsers.isEmpty()) {
+                            Text(
+                                "No users available",
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        } else {
+                            filteredUsers.forEach { user ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedUser = user
+                                            email = user.email
+                                            userDialogOpen = false
+                                            userSearch = ""
+                                            showValidation = false
+                                            onUserSelected(user)
+                                        }
+                                        .padding(vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        user.name,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        user.email,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Divider()
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        userDialogOpen = false
+                        userSearch = ""
+                    }
+                ) {
+                    Text("Close", color = CreateForwardOrange)
+                }
+            }
         )
     }
 }

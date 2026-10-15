@@ -91,5 +91,93 @@ interface ApiService {
     ): JsonElement
 
 
+    // ============================================================
+    // FORWARD ALERTS API
+    // ============================================================
+
+    @GET("getForwardAlertsList")
+    suspend fun getForwardAlertsList(
+        @Query("baseUserId") baseUserId: String,
+        @Query("lowerBound") lowerBound: Int = 0,
+        @Query("upperBound") upperBound: Int = 100,
+        @Query("searchName") searchName: String,
+        @Query("applicationIds") applicationIds: String,
+        @Query("searchEmail") searchEmail: String,
+        @Query("searchActive") searchActive: Int,
+        @Query("searchAppId") searchAppId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("getForwardMappedApplicationList")
+    suspend fun getForwardMappedApplicationList(
+        @Query("userId") userId: String,
+        @Query("userTypeId") userTypeId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("getBaseUserList")
+    suspend fun getBaseUserList(
+        @Query("userId") userId: String,
+        @Query("userTypeId") userTypeId: String,
+        @Query("applicationIds") applicationId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("getUserEmail")
+    suspend fun getUserEmail(
+        @Query("userId") userId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("getBaseUserDetailsById")
+    suspend fun getBaseUserDetailsById(
+        @Query("mapUserId") mapUserId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("duplicateForwardAlert")
+    suspend fun duplicateForwardAlert(
+        @Query("forwardAlertId") forwardAlertId: String,
+        @Query("baseUserId") baseUserId: String,
+        @Query("mappedUserId") mappedUserId: String,
+        @Query("applicationId") applicationId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("saveMappedUsers")
+    suspend fun saveMappedUsers(
+        @Query("forwardAlertId") forwardAlertId: String,
+        @Query("baseUserId") baseUserId: String,
+        @Query("mappedUserId") mappedUserId: String,
+        @Query("email") email: String,
+        @Query("sortOrder") sortOrder: String,
+        @Query("active") active: String,
+        @Query("applicationId") applicationId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("deleteForwardAlertUser")
+    suspend fun deleteForwardAlertUser(
+        @Query("forwardAlertId") forwardAlertId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("updateForwardAlertsUserStatus")
+    suspend fun updateForwardAlertsUserStatus(
+        @Query("userId") userId: String,
+        @Query("status") status: String,
+        @Query("mappedUserId") mappedUserId: String,
+        @Query("applicationId") applicationId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("updateForwardAlertsStatus")
+    suspend fun updateForwardAlertsStatus(
+        @Query("userId") userId: String,
+        @Query("status") status: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+
 
 }

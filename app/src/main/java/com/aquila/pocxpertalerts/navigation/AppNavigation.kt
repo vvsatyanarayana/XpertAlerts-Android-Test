@@ -48,11 +48,14 @@ import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModelFactory
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.google.gson.JsonElement
 import com.aquila.pocxpertalerts.ui.screens.ApplicationOption
+import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModel
+
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -812,20 +815,17 @@ fun AppNavigation() {
                         navController.popBackStack()
                     },
                     onCreateClick = {
-                        navController.navigate(
-                            Screen.ForwardAlertDetails.route
-                        )
+                        navController.navigate(Screen.ForwardAlertDetails.route)
                     },
-                    onEditClick = {
-                        navController.navigate(
-                            Screen.ForwardAlertDetails.route
-                        )
+                    onEditClick = { alert ->
+                        // The edit route will be connected to the selected record next.
+                        navController.navigate(Screen.ForwardAlertDetails.route)
                     },
                     onSearchClick = {
-                        navController.navigate(
-                            Screen.SearchForwardAlerts.route
-                        )
-                    }
+                        navController.navigate(Screen.SearchForwardAlerts.route)
+                    },
+                    alerts = emptyList(),
+                    isLoading = false
                 )
             }
 
@@ -834,12 +834,61 @@ fun AppNavigation() {
             // ----------------------------------------------------
 
             composable(Screen.ForwardAlertDetails.route) {
+
+                val forwardViewModel: ForwardAlertsViewModel = viewModel()
+                val formState by forwardViewModel.state.collectAsState()
+
+                val user = loggedInUser
+
+                LaunchedEffect(
+                    user?.id,
+                    user?.userTypeId,
+                    user?.sessionId
+                ) {
+                    if (user != null) {
+                        forwardViewModel.loadApplications(
+                            userId = user.id.toString(),
+                            userTypeId = user.userTypeId.toString(),
+                            sessionId = user.sessionId.orEmpty()
+                        )
+                    }
+                }
+
                 ForwardAlertDetailsScreen(
                     onBackClick = {
                         navController.popBackStack()
                     },
+
                     onSaveClick = {
                         navController.popBackStack()
+                    },
+
+                    applications = formState.applications,
+                    users = formState.users,
+                    emailFromApi = formState.selectedEmail,
+
+                    onApplicationSelected = { application ->
+                        forwardViewModel.loadUsers(application.id)
+                    },
+
+                    onUserSelected = { selectedUser ->
+                        forwardViewModel.loadUserEmail(selectedUser.id)
+                    },
+
+                    onMapClick = {
+                            applicationId,
+                            mappedUserId,
+                            email,
+                            sortOrder,
+                            active ->
+
+                        forwardViewModel.saveMapping(
+                            mappedUserId = mappedUserId,
+                            applicationId = applicationId,
+                            email = email,
+                            sortOrder = sortOrder,
+                            active = active
+                        )
                     }
                 )
             }
