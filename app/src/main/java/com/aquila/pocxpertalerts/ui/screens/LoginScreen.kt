@@ -226,7 +226,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(55.dp),
+                    .height(58.dp),
 
                 singleLine = true,
 
@@ -250,7 +250,7 @@ fun LoginScreen(
                             "User ID",
 
                         modifier =
-                            Modifier.size(14.dp)
+                            Modifier.size(12.dp)
                     )
                 },
 
@@ -343,7 +343,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(55.dp),
+                    .height(58.dp),
 
                 singleLine = true,
 
@@ -367,7 +367,7 @@ fun LoginScreen(
                             "Password",
 
                         modifier =
-                            Modifier.size(14.dp)
+                            Modifier.size(12.dp)
                     )
                 },
 
@@ -525,7 +525,7 @@ fun LoginScreen(
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(53.dp),
+                    .height(48.dp),
 
                 shape =
                     RoundedCornerShape(20.dp),

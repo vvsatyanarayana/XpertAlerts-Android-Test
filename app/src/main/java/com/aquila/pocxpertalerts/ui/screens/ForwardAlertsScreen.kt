@@ -1,6 +1,7 @@
 
 package com.aquila.pocxpertalerts.ui.screens
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,7 +28,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,15 +46,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val ForwardOrange = Color(0xFFED741C)
-private val ForwardGreen = Color(0xFF008B59)
 private val ForwardBackground = Color(0xFFFAFAFA)
+private val ForwardSearchPurple = Color(0xFF673AB7)
+private val ForwardSearchBorder = Color(0xFF999999)
 
 data class ForwardAlertItem(
     val id: String,
     val userName: String,
     val email: String,
     val applicationName: String,
-    val active: Boolean
+    val active: Boolean,
+    val mappedUserId: String = "",
+    val userId: String = "",
+    val applicationId: String = "",
+    val sortOrder: String = "0"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,18 +73,20 @@ fun ForwardAlertsScreen(
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onToggleStatus: (ForwardAlertItem, Boolean) -> Unit = { _, _ -> },
-    onStopAll: () -> Unit = {},
-    onStopSelected: (List<ForwardAlertItem>) -> Unit = {}
+    onSetAllStatus: (Boolean) -> Unit = {},
+    onDeleteClick: (ForwardAlertItem) -> Unit = {}
 ) {
-    var selectedIds by remember { mutableStateOf(setOf<String>()) }
-    var showStopAllDialog by remember { mutableStateOf(false) }
-    var showStopSelectedDialog by remember { mutableStateOf(false) }
     var pendingStatusChange by remember {
         mutableStateOf<Pair<ForwardAlertItem, Boolean>?>(null)
     }
+    var pendingAllStatus by remember {
+        mutableStateOf<Boolean?>(null)
+    }
+    var pendingDelete by remember {
+        mutableStateOf<ForwardAlertItem?>(null)
+    }
 
-    val allSelected =
-        alerts.isNotEmpty() && selectedIds.containsAll(alerts.map { it.id })
+    val allActive = alerts.isNotEmpty() && alerts.all { it.active }
 
     Scaffold(
         containerColor = ForwardBackground,
@@ -95,7 +102,7 @@ fun ForwardAlertsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
@@ -103,7 +110,10 @@ fun ForwardAlertsScreen(
                 },
                 actions = {
                     TextButton(onClick = onCreateClick) {
-                        Text("Create", color = Color.White)
+                        Text(
+                            text = "Create",
+                            color = Color.White
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -112,68 +122,65 @@ fun ForwardAlertsScreen(
             )
         }
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 15.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                readOnly = true,
-                placeholder = { Text("Search Forward Alerts") },
-                trailingIcon = {
-                    IconButton(onClick = onSearchClick) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    }
-                },
+            // Rounded Search Forward Alerts bar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onSearchClick),
-                shape = RoundedCornerShape(28.dp),
-                singleLine = true
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
+                    .height(56.dp)
+                    .clickable(onClick = onSearchClick)
+                    .border(
+                        width = 1.dp,
+                        color = ForwardSearchBorder,
+                        shape = RoundedCornerShape(50)
+                    )
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(
-                    checked = allSelected,
-                    onCheckedChange = { checked ->
-                        selectedIds = if (checked) {
-                            alerts.map { it.id }.toSet()
-                        } else {
-                            emptySet()
-                        }
-                    }
-                )
-
                 Text(
-                    text = if (allSelected) "UnSelect All" else "Select All",
+                    text = "Search Forward Alerts",
                     modifier = Modifier.weight(1f),
-                    fontSize = 14.sp
+                    color = Color(0xFF757575),
+                    fontSize = 16.sp
                 )
 
-                TextButton(
-                    onClick = {
-                        if (selectedIds.isEmpty()) {
-                            showStopAllDialog = true
-                        } else {
-                            showStopSelectedDialog = true
-                        }
-                    }
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search Forward Alerts",
+                    tint = Color.Gray
+                )
+            }
+
+            // Select All / UnSelect All
+            if (alerts.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Stop Forwarding", color = ForwardOrange)
+                    Checkbox(
+                        checked = allActive,
+                        onCheckedChange = { checked ->
+                            pendingAllStatus = checked
+                        }
+                    )
+
+                    Text(
+                        text = if (allActive) "UnSelect All" else "Select All",
+                        fontSize = 14.sp
+                    )
                 }
             }
 
+            // Loading, error, empty, and alert list states
             when {
                 isLoading -> {
                     Box(
@@ -184,14 +191,17 @@ fun ForwardAlertsScreen(
                     }
                 }
 
-                errorMessage != null -> {
+                errorMessage != null && alerts.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(errorMessage)
+                        Text(
+                            text = errorMessage,
+                            color = Color.DarkGray
+                        )
                     }
                 }
 
@@ -200,75 +210,85 @@ fun ForwardAlertsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No forward alerts found")
+                        Text(
+                            text = "No records found",
+                            color = Color(0xFF757575),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
                 else -> {
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(alerts, key = { it.id }) { alert ->
+                        items(
+                            items = alerts,
+                            key = { it.id }
+                        ) { alert ->
+
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(5.dp)
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(8.dp)
+                                    modifier = Modifier.padding(
+                                        horizontal = 10.dp,
+                                        vertical = 8.dp
+                                    )
                                 ) {
                                     Row(
-                                        verticalAlignment =
-                                            Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Checkbox(
-                                            checked = alert.id in selectedIds,
-                                            onCheckedChange = { checked ->
-                                                selectedIds =
-                                                    if (checked) {
-                                                        selectedIds + alert.id
-                                                    } else {
-                                                        selectedIds - alert.id
-                                                    }
-                                            }
-                                        )
-
                                         Column(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable {
-                                                    onEditClick(alert)
-                                                }
+                                            modifier = Modifier.weight(1f)
                                         ) {
                                             Text(
-                                                text = alert.userName,
+                                                text = alert.userName.ifBlank {
+                                                    "User"
+                                                },
                                                 color = ForwardOrange,
-                                                fontWeight = FontWeight.Medium
+                                                fontWeight = FontWeight.SemiBold
                                             )
+
                                             Text(
                                                 text = alert.email,
-                                                fontSize = 12.sp
+                                                fontSize = 12.sp,
+                                                color = Color.DarkGray
                                             )
+
                                             Text(
                                                 text = alert.applicationName,
-                                                fontSize = 12.sp
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                pendingDelete = alert
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Delete mapping",
+                                                tint = ForwardOrange
                                             )
                                         }
                                     }
 
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 8.dp),
-                                        verticalAlignment =
-                                            Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = if (alert.active) {
-                                                "Forwarding enabled"
-                                            } else {
-                                                "Forwarding disabled"
-                                            },
+                                            text = "Activate",
                                             modifier = Modifier.weight(1f),
+                                            fontSize = 13.sp
+                                        )
+
+                                        Text(
+                                            text = if (alert.active) "Yes" else "No",
                                             fontSize = 12.sp,
                                             color = Color.Gray
                                         )
@@ -276,8 +296,7 @@ fun ForwardAlertsScreen(
                                         Checkbox(
                                             checked = alert.active,
                                             onCheckedChange = { checked ->
-                                                pendingStatusChange =
-                                                    alert to checked
+                                                pendingStatusChange = alert to checked
                                             }
                                         )
                                     }
@@ -290,13 +309,18 @@ fun ForwardAlertsScreen(
         }
     }
 
-    pendingStatusChange?.let { (alert, newStatus) ->
+    // Confirm individual alert status change
+    pendingStatusChange?.let { (alert, status) ->
         AlertDialog(
-            onDismissRequest = { pendingStatusChange = null },
-            title = { Text("Confirm") },
+            onDismissRequest = {
+                pendingStatusChange = null
+            },
+            title = {
+                Text("Confirm")
+            },
             text = {
                 Text(
-                    if (newStatus) {
+                    if (status) {
                         "Are you sure you want to forward alerts to the selected user?"
                     } else {
                         "Are you sure you want to stop forwarding alerts to the selected user?"
@@ -306,7 +330,7 @@ fun ForwardAlertsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onToggleStatus(alert, newStatus)
+                        onToggleStatus(alert, status)
                         pendingStatusChange = null
                     }
                 ) {
@@ -314,36 +338,10 @@ fun ForwardAlertsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingStatusChange = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    if (showStopSelectedDialog) {
-        AlertDialog(
-            onDismissRequest = { showStopSelectedDialog = false },
-            title = { Text("Confirm") },
-            text = {
-                Text("Are you sure you want to stop forwarding alerts to the selected user(s)?")
-            },
-            confirmButton = {
                 TextButton(
                     onClick = {
-                        val selected = alerts.filter {
-                            it.id in selectedIds
-                        }
-                        onStopSelected(selected)
-                        showStopSelectedDialog = false
+                        pendingStatusChange = null
                     }
-                ) {
-                    Text("OK", color = ForwardOrange)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showStopSelectedDialog = false }
                 ) {
                     Text("Cancel")
                 }
@@ -351,20 +349,29 @@ fun ForwardAlertsScreen(
         )
     }
 
-    if (showStopAllDialog) {
+    // Confirm status change for all alerts
+    pendingAllStatus?.let { status ->
         AlertDialog(
-            onDismissRequest = { showStopAllDialog = false },
-            title = { Text("Confirm") },
+            onDismissRequest = {
+                pendingAllStatus = null
+            },
+            title = {
+                Text("Confirm")
+            },
             text = {
                 Text(
-                    "Are you sure you want to stop forwarding alerts to all users?"
+                    if (status) {
+                        "Are you sure you want to forward alerts to all users?"
+                    } else {
+                        "Are you sure you want to stop forwarding alerts to all users?"
+                    }
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        onStopAll()
-                        showStopAllDialog = false
+                        onSetAllStatus(status)
+                        pendingAllStatus = null
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ForwardOrange
@@ -375,7 +382,43 @@ fun ForwardAlertsScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showStopAllDialog = false }
+                    onClick = {
+                        pendingAllStatus = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Confirm deletion
+    pendingDelete?.let { alert ->
+        AlertDialog(
+            onDismissRequest = {
+                pendingDelete = null
+            },
+            title = {
+                Text("Delete mapping")
+            },
+            text = {
+                Text("Are you sure you want to delete the mapped user?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteClick(alert)
+                        pendingDelete = null
+                    }
+                ) {
+                    Text("OK", color = ForwardOrange)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingDelete = null
+                    }
                 ) {
                     Text("Cancel")
                 }

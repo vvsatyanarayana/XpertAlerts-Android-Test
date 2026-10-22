@@ -1,25 +1,51 @@
 package com.aquila.pocxpertalerts.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.repository.ForwardAlertsRepository
-import com.aquila.pocxpertalerts.ui.screens.ForwardApplicationOption
-import com.aquila.pocxpertalerts.ui.screens.ForwardUserOption
+import com.aquila.pocxpertalerts.ui.screens.ForwardAlertItem
 import com.google.gson.JsonElement
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
-data class ForwardAlertFormState(
+data class ForwardAlertsListState(
+    val alerts: List<ForwardAlertItem> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
+)
+
+data class ForwardApplicationOption(
+    val id: String,
+    val name: String
+)
+
+data class ForwardUserOption(
+    val id: String,
+    val name: String,
+    val email: String = ""
+)
+
+data class ForwardAlertsFormState(
     val applications: List<ForwardApplicationOption> = emptyList(),
     val users: List<ForwardUserOption> = emptyList(),
-    val selectedEmail: String = "",
     val isLoadingApplications: Boolean = false,
     val isLoadingUsers: Boolean = false,
+    val errorMessage: String? = null,
+    val isDuplicate: Boolean = false,
+    val duplicateChecked: Boolean = false
+)
+
+data class CreateForwardAlertState(
+    val email: String = "",
+    val isLoadingEmail: Boolean = false,
     val isSaving: Boolean = false,
     val message: String? = null,
-    val saved: Boolean = false
+    val isSuccess: Boolean = false,
+    val isDuplicate: Boolean = false,
+    val duplicateChecked: Boolean = false
 )
 
 class ForwardAlertsViewModel(
@@ -27,183 +53,411 @@ class ForwardAlertsViewModel(
         ForwardAlertsRepository()
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ForwardAlertFormState())
-    val state: StateFlow<ForwardAlertFormState> = _state.asStateFlow()
+    private val _listState =
+        MutableStateFlow(ForwardAlertsListState())
 
-    private var currentUserId: String = ""
-    private var currentUserTypeId: String = ""
-    private var currentSessionId: String = ""
+    val listState: StateFlow<ForwardAlertsListState> =
+        _listState.asStateFlow()
+    private val _formState = MutableStateFlow(ForwardAlertsFormState())
 
-    // ---------------------------------------------------------
-    // INITIALIZE LOGGED-IN USER AND LOAD APPLICATIONS
-    // ---------------------------------------------------------
+    val formState: StateFlow<ForwardAlertsFormState> =
+        _formState.asStateFlow()
+
+    private val _createState =
+        MutableStateFlow(CreateForwardAlertState())
+
+    val createState: StateFlow<CreateForwardAlertState> =
+        _createState.asStateFlow()
+
+    private var currentUserId = ""
+    private var currentUserTypeId = ""
+    private var currentSessionId = ""
+    private var currentApplicationIds = ""
+
+    private var currentSearchName = ""
+    private var currentSearchEmail = ""
+    private var currentSearchActive = 2
+    private var currentSearchAppId = "0"
+
+    fun loadForwardAlerts(
+        userId: String,
+        userTypeId: String,
+        sessionId: String,
+        applicationIds: String,
+        searchName: String = "",
+        searchEmail: String = "",
+        searchActive: Int = 2,
+        searchAppId: String = "0"
+    ) {
+        currentUserId = userId
+        currentUserTypeId = userTypeId
+        currentSessionId = sessionId
+        currentApplicationIds = applicationIds
+
+        currentSearchName = searchName
+        currentSearchEmail = searchEmail
+        currentSearchActive = searchActive
+        currentSearchAppId = searchAppId
+
+        if (userId.isBlank() || sessionId.isBlank()) {
+            _listState.value = ForwardAlertsListState(
+                errorMessage = "User ID or session ID is missing."
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            _listState.value = _listState.value.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+
+            try {
+                val response = repository.getForwardAlerts(
+                    baseUserId = userId,
+                    applicationIds = applicationIds,
+                    sessionId = sessionId,
+                    searchName = searchName,
+                    searchEmail = searchEmail,
+                    searchActive = searchActive,
+                    searchAppId = searchAppId
+                )
+
+                Log.d("ForwardAlertsAPI", "List response: $response")
+
+                val (errorCode, errorMessage) = getApiError(response)
+
+                if (errorCode == 412) {
+                    _listState.value = ForwardAlertsListState(
+                        errorMessage = errorMessage
+                            ?: "Your session has expired. Please log in again."
+                    )
+                    return@launch
+                }
+
+                if (errorCode != null && errorCode != 0) {
+                    _listState.value = ForwardAlertsListState(
+                        errorMessage = errorMessage
+                            ?: "The server rejected the request: $errorCode"
+                    )
+                    return@launch
+                }
+
+                val records = response.asRecordList()
+
+                val alerts = records.mapNotNull { item ->
+                    if (!item.isJsonObject) return@mapNotNull null
+
+                    val obj = item.asJsonObject
+
+                    fun value(vararg keys: String): String {
+                        for (key in keys) {
+                            val element = obj.get(key)
+                            if (element != null && !element.isJsonNull) {
+                                return runCatching {
+                                    element.asString
+                                }.getOrDefault("")
+                            }
+                        }
+                        return ""
+                    }
+
+                    val id = value("forwardAlertId", "id")
+                    if (id.isBlank()) return@mapNotNull null
+
+                    val activeValue = value("active", "status")
+                    ForwardAlertItem(
+                        id = value("forwardAlertId"),
+                        userName = value("userName"),
+                        email = value("email"),
+                        applicationName = value("applicationName"),
+                        active = value("active") == "1",
+                        mappedUserId = value("mapUserId"),
+                        userId = value("baseUserId"),
+                        applicationId = value("applicationId"),
+                        sortOrder = value("sortOrder").ifBlank { "0" }
+                    )
+                }
+
+                _listState.value = ForwardAlertsListState(
+                    alerts = alerts,
+                    errorMessage = if (alerts.isEmpty()) {
+                        errorMessage ?: "No forward alerts found."
+                    } else {
+                        null
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("ForwardAlertsAPI", "Failed to load list", e)
+
+                _listState.value = ForwardAlertsListState(
+                    errorMessage = e.message
+                        ?: "Unable to load Forward Alerts."
+                )
+            }
+        }
+    }
 
     fun loadApplications(
         userId: String,
         userTypeId: String,
         sessionId: String
+
     ) {
+        println(
+            "ForwardAlertsAPI loadApplications CALLED: " +
+                    "userId=$userId, userTypeId=$userTypeId, " +
+                    "sessionIdPresent=${sessionId.isNotBlank()}"
+        )
         currentUserId = userId
         currentUserTypeId = userTypeId
         currentSessionId = sessionId
 
-        if (userId.isBlank() || sessionId.isBlank()) {
-            _state.value = _state.value.copy(
-                isLoadingApplications = false,
+        viewModelScope.launch {
+            _formState.value = _formState.value.copy(
+                isLoadingApplications = true,
+                errorMessage = null
+            )
+
+            try {
+                val response = repository.getApplications(
+                    userId = userId,
+                    userTypeId = userTypeId,
+                    sessionId = sessionId
+                )
+
+                println("ForwardAlertsAPI Applications response: $response")
+
+                val records = response.toOptionRecords()
+                val applications = records.mapNotNull { item ->
+                    if (!item.isJsonObject) return@mapNotNull null
+
+                    val obj = item.asJsonObject
+
+                    fun read(vararg keys: String): String =
+                        keys.firstNotNullOfOrNull { key ->
+                            obj.get(key)
+                                ?.takeIf { !it.isJsonNull }
+                                ?.let { runCatching { it.asString }.getOrNull() }
+                                ?.takeIf { it.isNotBlank() }
+                        }.orEmpty()
+
+                    val id = read("applicationId", "appId", "id")
+                    val name = read("applicationName", "appName", "name")
+
+                    if (id.isBlank() || name.isBlank()) null
+                    else ForwardApplicationOption(id, name)
+                }
+
+                _formState.value = _formState.value.copy(
+                    applications = applications,
+                    isLoadingApplications = false
+                )
+            } catch (e: Exception) {
+                _formState.value = _formState.value.copy(
+                    isLoadingApplications = false,
+                    errorMessage = e.message ?: "Unable to load applications."
+                )
+            }
+        }
+    }
+
+    fun loadUsers(applicationId: String = "0") {
+        if (
+            currentUserId.isBlank() ||
+            currentUserTypeId.isBlank() ||
+            currentSessionId.isBlank()
+        ) {
+            _formState.value = _formState.value.copy(
+                errorMessage = "User session is missing."
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            _formState.value = _formState.value.copy(
+                isLoadingUsers = true,
+                users = emptyList(),
+                errorMessage = null
+            )
+
+            try {
+                val response = repository.getUsers(
+                    userId = currentUserId,
+                    userTypeId = currentUserTypeId,
+                    applicationId = applicationId,
+                    sessionId = currentSessionId
+                )
+
+                val records = response.toOptionRecords()
+
+                val users = records.mapNotNull { item ->
+                    if (!item.isJsonObject) return@mapNotNull null
+
+                    val obj = item.asJsonObject
+
+                    fun read(vararg keys: String): String =
+                        keys.firstNotNullOfOrNull { key ->
+                            obj.get(key)
+                                ?.takeIf { !it.isJsonNull }
+                                ?.let { runCatching { it.asString }.getOrNull() }
+                                ?.takeIf { it.isNotBlank() }
+                        }.orEmpty()
+
+                    val id = read("userId", "baseUserId", "mapUserId", "id")
+                    val firstName = read("firstName", "firstname")
+                    val lastName = read("lastName", "lastname")
+                    val name = read("userName", "name").ifBlank {
+                        listOf(firstName, lastName)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" ")
+                    }
+                    val email = read("email", "mailId")
+
+                    if (id.isBlank() || name.isBlank()) null
+                    else ForwardUserOption(id, name, email)
+                }
+
+                _formState.value = _formState.value.copy(
+                    users = users,
+                    isLoadingUsers = false
+                )
+            } catch (e: Exception) {
+                _formState.value = _formState.value.copy(
+                    isLoadingUsers = false,
+                    errorMessage = e.message ?: "Unable to load users."
+                )
+            }
+        }
+    }
+
+    fun loadCreateUserEmail(userId: String) {
+        if (userId.isBlank() || currentSessionId.isBlank()) {
+            _createState.value = _createState.value.copy(
+                email = "",
+                isLoadingEmail = false,
                 message = "User ID or session ID is missing."
             )
             return
         }
 
         viewModelScope.launch {
-            _state.value = _state.value.copy(
-                isLoadingApplications = true,
+            _createState.value = _createState.value.copy(
+                isLoadingEmail = true,
+                email = "",
                 message = null
             )
 
-            runCatching {
-                repository.getApplications(
-                    userId = currentUserId,
-                    userTypeId = currentUserTypeId,
-                    sessionId = currentSessionId
-                )
-            }.onSuccess { response ->
-                _state.value = _state.value.copy(
-                    applications = parseApplications(response),
-                    isLoadingApplications = false,
-                    message = null
-                )
-            }.onFailure { error ->
-                _state.value = _state.value.copy(
-                    isLoadingApplications = false,
-                    message = error.message
-                        ?: "Unable to load applications."
-                )
-            }
-        }
-    }
-
-    // ---------------------------------------------------------
-    // LOAD USERS WHEN AN APPLICATION IS SELECTED
-    // ---------------------------------------------------------
-
-    fun loadUsers(applicationId: String) {
-        if (applicationId.isBlank()) {
-            _state.value = _state.value.copy(
-                users = emptyList(),
-                message = "Please select an application."
-            )
-            return
-        }
-
-        viewModelScope.launch {
-            _state.value = _state.value.copy(
-                users = emptyList(),
-                selectedEmail = "",
-                isLoadingUsers = true,
-                message = null
-            )
-
-            runCatching {
-                repository.getUsers(
-                    userId = currentUserId,
-                    userTypeId = currentUserTypeId,
-                    applicationId = applicationId,
-                    sessionId = currentSessionId
-                )
-            }.onSuccess { response ->
-                _state.value = _state.value.copy(
-                    users = parseUsers(response),
-                    isLoadingUsers = false,
-                    message = null
-                )
-            }.onFailure { error ->
-                _state.value = _state.value.copy(
-                    isLoadingUsers = false,
-                    message = error.message
-                        ?: "Unable to load users."
-                )
-            }
-        }
-    }
-
-    // ---------------------------------------------------------
-    // LOAD EMAIL FOR SELECTED USER
-    // ---------------------------------------------------------
-
-    fun loadUserEmail(userId: String) {
-        if (userId.isBlank()) {
-            _state.value = _state.value.copy(
-                selectedEmail = "",
-                message = "Please select a user."
-            )
-            return
-        }
-
-        viewModelScope.launch {
-            runCatching {
-                repository.getUserEmail(
+            try {
+                val response = repository.getUserEmail(
                     userId = userId,
                     sessionId = currentSessionId
                 )
-            }.onSuccess { response ->
-                val email = findString(
-                    response,
-                    setOf("email", "emailAddress", "mailId")
-                )
 
-                _state.value = _state.value.copy(
-                    selectedEmail = email.orEmpty(),
-                    message = if (email.isNullOrBlank()) {
-                        "The API did not return an email address."
+                Log.d("ForwardAlertsAPI", "User email response: $response")
+
+                val email = when {
+                    response.isJsonPrimitive ->
+                        response.asString
+
+                    response.isJsonObject -> {
+                        val obj = response.asJsonObject
+                        listOf("email", "userEmail", "mailId")
+                            .firstNotNullOfOrNull { key ->
+                                obj.get(key)
+                                    ?.takeIf { !it.isJsonNull }
+                                    ?.let {
+                                        runCatching { it.asString }.getOrNull()
+                                    }
+                                    ?.takeIf { it.isNotBlank() }
+                            }.orEmpty()
+                    }
+
+                    response.isJsonArray -> {
+                        val obj = response.asJsonArray
+                            .firstOrNull()
+                            ?.takeIf { it.isJsonObject }
+                            ?.asJsonObject
+
+                        listOf("email", "userEmail", "mailId")
+                            .firstNotNullOfOrNull { key ->
+                                obj?.get(key)
+                                    ?.takeIf { !it.isJsonNull }
+                                    ?.let {
+                                        runCatching { it.asString }.getOrNull()
+                                    }
+                                    ?.takeIf { it.isNotBlank() }
+                            }.orEmpty()
+                    }
+
+                    else -> ""
+                }
+
+                _createState.value = _createState.value.copy(
+                    email = email,
+                    isLoadingEmail = false,
+                    message = if (email.isBlank()) {
+                        "Email was not returned by the API."
                     } else {
                         null
                     }
                 )
-            }.onFailure { error ->
-                _state.value = _state.value.copy(
-                    message = error.message
-                        ?: "Unable to load the user's email."
+            } catch (e: Exception) {
+                Log.e("ForwardAlertsAPI", "Failed to load user email", e)
+
+                _createState.value = _createState.value.copy(
+                    isLoadingEmail = false,
+                    message = e.message ?: "Unable to load user email."
                 )
             }
         }
     }
 
-    // ---------------------------------------------------------
-    // CHECK DUPLICATE AND SAVE MAPPING
-    // ---------------------------------------------------------
-
-    fun saveMapping(
-        forwardAlertId: String = "0",
-        mappedUserId: String,
+    fun createForwardAlert(
         applicationId: String,
+        mappedUserId: String,
         email: String,
         sortOrder: String,
-        active: Boolean
+        active: Boolean,
+        forwardAlertId: String = "0"
     ) {
-        if (
-            currentUserId.isBlank() ||
-            currentSessionId.isBlank() ||
-            mappedUserId.isBlank() ||
-            applicationId.isBlank() ||
-            email.isBlank()
-        ) {
-            _state.value = _state.value.copy(
-                message = "Required user, application, or email details are missing.",
-                saved = false
+        if (currentUserId.isBlank() || currentSessionId.isBlank()) {
+            _createState.value = _createState.value.copy(
+                isSaving = false,
+                message = "User session is missing.",
+                isSuccess = false
+            )
+            return
+        }
+
+        if (applicationId.isBlank() || applicationId == "0") {
+            _createState.value = _createState.value.copy(
+                message = "Please select an application.",
+                isSuccess = false
+            )
+            return
+        }
+
+        if (mappedUserId.isBlank() || mappedUserId == "0") {
+            _createState.value = _createState.value.copy(
+                message = "Please select a user.",
+                isSuccess = false
             )
             return
         }
 
         viewModelScope.launch {
-            _state.value = _state.value.copy(
+            _createState.value = _createState.value.copy(
                 isSaving = true,
                 message = null,
-                saved = false
+                isSuccess = false,
+                isDuplicate = false,
+                duplicateChecked = false
             )
 
             try {
-                val duplicateResponse = repository.checkDuplicate(
+                // First check whether the mapping already exists.
+                val duplicateResponse = repository.getDuplicateForwardAlert(
                     forwardAlertId = forwardAlertId,
                     baseUserId = currentUserId,
                     mappedUserId = mappedUserId,
@@ -211,16 +465,62 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
-                if (indicatesDuplicate(duplicateResponse)) {
-                    _state.value = _state.value.copy(
+                Log.d(
+                    "ForwardAlertsAPI",
+                    "Duplicate check response: $duplicateResponse"
+                )
+
+                val duplicateObject = when {
+                    duplicateResponse.isJsonObject ->
+                        duplicateResponse.asJsonObject
+
+                    duplicateResponse.isJsonArray ->
+                        duplicateResponse.asJsonArray
+                            .firstOrNull()
+                            ?.takeIf { it.isJsonObject }
+                            ?.asJsonObject
+
+                    else -> null
+                }
+
+                val errorCode = duplicateObject
+                    ?.get("errorCode")
+                    ?.takeIf { !it.isJsonNull }
+                    ?.let { runCatching { it.asInt }.getOrNull() }
+
+                if (errorCode == 412) {
+                    _createState.value = _createState.value.copy(
                         isSaving = false,
-                        saved = false,
-                        message = "The selected user is already mapped."
+                        message = "Your session has expired. Please log in again."
                     )
                     return@launch
                 }
 
-                val saveResponse = repository.saveMapping(
+                val duplicateCount = duplicateObject
+                    ?.get("duplicateCount")
+                    ?.takeIf { !it.isJsonNull }
+                    ?.let { runCatching { it.asInt }.getOrNull() }
+
+                if (duplicateCount == null) {
+                    _createState.value = _createState.value.copy(
+                        isSaving = false,
+                        message = "Could not verify duplicate mapping. Please check the API response."
+                    )
+                    return@launch
+                }
+
+                if (duplicateCount > 0) {
+                    _createState.value = _createState.value.copy(
+                        isSaving = false,
+                        isDuplicate = true,
+                        duplicateChecked = true,
+                        message = "This user is already mapped to this application."
+                    )
+                    return@launch
+                }
+
+                // No duplicate: save the mapping.
+                val saveResponse = repository.saveMappedUser(
                     forwardAlertId = forwardAlertId,
                     baseUserId = currentUserId,
                     mappedUserId = mappedUserId,
@@ -231,210 +531,260 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
-                if (indicatesFailure(saveResponse)) {
-                    _state.value = _state.value.copy(
-                        isSaving = false,
-                        saved = false,
-                        message = "The server reported that saving failed."
-                    )
-                } else {
-                    _state.value = _state.value.copy(
-                        isSaving = false,
-                        saved = true,
-                        message = "Save request completed. Verify the server response."
-                    )
+                Log.d(
+                    "ForwardAlertsAPI",
+                    "Save mapping response: $saveResponse"
+                )
+
+                val saveObject = when {
+                    saveResponse.isJsonObject ->
+                        saveResponse.asJsonObject
+
+                    saveResponse.isJsonArray ->
+                        saveResponse.asJsonArray
+                            .firstOrNull()
+                            ?.takeIf { it.isJsonObject }
+                            ?.asJsonObject
+
+                    else -> null
                 }
-            } catch (error: Exception) {
-                _state.value = _state.value.copy(
+
+                val saveErrorCode = saveObject
+                    ?.get("errorCode")
+                    ?.takeIf { !it.isJsonNull }
+                    ?.let { runCatching { it.asInt }.getOrNull() }
+
+                val saveMessage = saveObject
+                    ?.get("message")
+                    ?.takeIf { !it.isJsonNull }
+                    ?.let { runCatching { it.asString }.getOrNull() }
+
+                when (saveErrorCode) {
+                    412 -> {
+                        _createState.value = _createState.value.copy(
+                            isSaving = false,
+                            message = "Your session has expired. Please log in again."
+                        )
+                    }
+
+                    1, 2 -> {
+                        _createState.value = _createState.value.copy(
+                            isSaving = false,
+                            message = saveMessage
+                                ?: "The mapping could not be saved."
+                        )
+                    }
+
+                    else -> {
+                        _createState.value = _createState.value.copy(
+                            isSaving = false,
+                            isSuccess = true,
+                            message = saveMessage ?: "Forward alert mapped successfully."
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ForwardAlertsAPI", "Create forward alert failed", e)
+
+                _createState.value = _createState.value.copy(
                     isSaving = false,
-                    saved = false,
-                    message = error.message
-                        ?: "Unable to save the mapping."
+                    isSuccess = false,
+                    message = e.message ?: "Unable to save forward alert."
                 )
             }
         }
     }
 
-    // ---------------------------------------------------------
-    // RESET FORM FEEDBACK
-    // ---------------------------------------------------------
-
-    fun clearMessage() {
-        _state.value = _state.value.copy(message = null)
-    }
-
-    fun clearSavedState() {
-        _state.value = _state.value.copy(
-            saved = false,
-            message = null
+    fun resetSearchForm() {
+        _formState.value = _formState.value.copy(
+            users = emptyList(),
+            errorMessage = null
         )
+        loadUsers("0")
     }
 
-    // ---------------------------------------------------------
-    // PARSE APPLICATION RESPONSE
-    // ---------------------------------------------------------
-
-    private fun parseApplications(
-        response: JsonElement
-    ): List<ForwardApplicationOption> {
-        return response.asArrayOrNested()
-            .mapNotNull { item ->
-                val id = findString(
-                    item,
-                    setOf("applicationId", "appId", "id")
-                ) ?: return@mapNotNull null
-
-                val name = findString(
-                    item,
-                    setOf("applicationName", "appName", "name")
-                ) ?: return@mapNotNull null
-
-                ForwardApplicationOption(
-                    id = id,
-                    name = name
-                )
-            }
-    }
-
-    // ---------------------------------------------------------
-    // PARSE USER RESPONSE
-    // ---------------------------------------------------------
-
-    private fun parseUsers(
-        response: JsonElement
-    ): List<ForwardUserOption> {
-        return response.asArrayOrNested()
-            .mapNotNull { item ->
-                val id = findString(
-                    item,
-                    setOf("userId", "baseUserId", "id")
-                ) ?: return@mapNotNull null
-
-                val name = findString(
-                    item,
-                    setOf("userName", "fullName", "name", "fname")
-                ) ?: return@mapNotNull null
-
-                val email = findString(
-                    item,
-                    setOf("email", "emailAddress", "mailId")
-                ).orEmpty()
-
-                ForwardUserOption(
-                    id = id,
-                    name = name,
-                    email = email
-                )
-            }
-    }
-
-    // ---------------------------------------------------------
-    // HANDLE ARRAY OR NESTED JSON RESPONSE
-    // ---------------------------------------------------------
-
-    private fun JsonElement.asArrayOrNested(): List<JsonElement> {
-        if (isJsonArray) {
-            return asJsonArray.toList()
-        }
-
-        if (!isJsonObject) {
-            return emptyList()
-        }
+    private fun JsonElement.toOptionRecords(): List<JsonElement> {
+        if (isJsonArray) return asJsonArray.toList()
+        if (!isJsonObject) return emptyList()
 
         val obj = asJsonObject
 
-        for (key in listOf(
-            "data",
-            "result",
-            "results",
-            "applications",
-            "users"
-        )) {
-            val value = obj.get(key) ?: continue
-
-            if (value.isJsonArray) {
-                return value.asJsonArray.toList()
+        for (key in listOf("data", "results", "records", "applications", "users")) {
+            val child = obj.get(key)
+            if (child != null && child.isJsonArray) {
+                return child.asJsonArray.toList()
             }
         }
 
         return emptyList()
     }
 
-    // ---------------------------------------------------------
-    // FIND A FIELD IN JSON
-    // ---------------------------------------------------------
-
-    private fun findString(
-        element: JsonElement,
-        keys: Set<String>
-    ): String? {
-        if (element.isJsonNull) {
-            return null
+    fun updateForwardAlertStatus(
+        alert: ForwardAlertItem,
+        active: Boolean
+    ) {
+        if (alert.mappedUserId.isBlank() ||
+            alert.applicationId.isBlank()
+        ) {
+            _listState.value = _listState.value.copy(
+                errorMessage =
+                    "The API response is missing the mapped user ID or application ID."
+            )
+            return
         }
 
-        if (element.isJsonPrimitive) {
-            return element.asString
+        runListAction("Update status") {
+            repository.updateUserStatus(
+                userId = currentUserId,
+                status = if (active) "1" else "0",
+                mappedUserId = alert.mappedUserId,
+                applicationId = alert.applicationId,
+                sessionId = currentSessionId
+            )
         }
-
-        if (element.isJsonArray) {
-            for (item in element.asJsonArray) {
-                val result = findString(item, keys)
-                if (result != null) return result
-            }
-            return null
-        }
-
-        if (!element.isJsonObject) {
-            return null
-        }
-
-        val obj = element.asJsonObject
-        val normalizedKeys = keys.map { it.lowercase() }.toSet()
-
-        for ((key, value) in obj.entrySet()) {
-            if (
-                key.lowercase() in normalizedKeys &&
-                value.isJsonPrimitive &&
-                !value.isJsonNull
-            ) {
-                return value.asString
-            }
-        }
-
-        for ((_, value) in obj.entrySet()) {
-            val result = findString(value, keys)
-            if (result != null) return result
-        }
-
-        return null
     }
 
-    // ---------------------------------------------------------
-    // DUPLICATE RESPONSE CHECK
-    // Verify against the real backend response before production.
-    // ---------------------------------------------------------
-
-    private fun indicatesDuplicate(
-        response: JsonElement
-    ): Boolean {
-        val text = response.toString().lowercase()
-
-        return text.contains("already mapped") ||
-                text.contains("\"duplicate\":true") ||
-                text.contains("\"isduplicate\":true")
+    fun updateAllForwardAlertsStatus(active: Boolean) {
+        runListAction("Update all statuses") {
+            repository.updateAllStatus(
+                userId = currentUserId,
+                status = if (active) "1" else "0",
+                sessionId = currentSessionId
+            )
+        }
     }
 
-    // ---------------------------------------------------------
-    // SAVE RESPONSE CHECK
-    // ---------------------------------------------------------
+    fun deleteForwardAlert(alert: ForwardAlertItem) {
+        if (alert.id.isBlank()) {
+            _listState.value = _listState.value.copy(
+                errorMessage = "Forward Alert ID is missing."
+            )
+            return
+        }
 
-    private fun indicatesFailure(
+        runListAction("Delete mapping") {
+            repository.deleteForwardAlert(
+                forwardAlertId = alert.id,
+                sessionId = currentSessionId
+            )
+        }
+    }
+
+    private fun runListAction(
+        actionName: String,
+        request: suspend () -> JsonElement
+    ) {
+        if (currentUserId.isBlank() || currentSessionId.isBlank()) {
+            _listState.value = _listState.value.copy(
+                errorMessage = "User session is missing."
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            _listState.value = _listState.value.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+
+            try {
+                val response = request()
+
+                Log.d(
+                    "ForwardAlertsAPI",
+                    "$actionName response: $response"
+                )
+
+                val (errorCode, errorMessage) = getApiError(response)
+
+                if (errorCode == 412) {
+                    _listState.value = _listState.value.copy(
+                        isLoading = false,
+                        errorMessage = errorMessage
+                            ?: "Your session has expired."
+                    )
+                    return@launch
+                }
+
+                if (errorCode != null && errorCode != 0) {
+                    _listState.value = _listState.value.copy(
+                        isLoading = false,
+                        errorMessage = errorMessage
+                            ?: "$actionName failed (errorCode $errorCode)."
+                    )
+                    return@launch
+                }
+
+                loadForwardAlerts(
+                    userId = currentUserId,
+                    userTypeId = currentUserTypeId,
+                    sessionId = currentSessionId,
+                    applicationIds = currentApplicationIds,
+                    searchName = currentSearchName,
+                    searchEmail = currentSearchEmail,
+                    searchActive = currentSearchActive,
+                    searchAppId = currentSearchAppId
+                )
+            } catch (e: Exception) {
+                Log.e("ForwardAlertsAPI", "$actionName failed", e)
+
+                _listState.value = _listState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "$actionName failed."
+                )
+            }
+        }
+    }
+
+    private fun getApiError(
         response: JsonElement
-    ): Boolean {
-        val text = response.toString().lowercase()
+    ): Pair<Int?, String?> {
+        val obj = when {
+            response.isJsonObject -> response.asJsonObject
+            response.isJsonArray ->
+                response.asJsonArray.firstOrNull()
+                    ?.takeIf { it.isJsonObject }
+                    ?.asJsonObject
+            else -> null
+        } ?: return null to null
 
-        return text.contains("\"success\":false") ||
-                text.contains("\"status\":\"error\"") ||
-                text.contains("\"error\":true")
+        val code = obj.get("errorCode")
+            ?.takeIf { !it.isJsonNull }
+            ?.let { runCatching { it.asInt }.getOrNull() }
+
+        val message = listOf(
+            "errorMessage",
+            "message",
+            "error"
+        ).firstNotNullOfOrNull { key ->
+            obj.get(key)
+                ?.takeIf { !it.isJsonNull }
+                ?.let { runCatching { it.asString }.getOrNull() }
+                ?.takeIf { it.isNotBlank() }
+        }
+
+        return code to message
+    }
+
+    private fun JsonElement.asRecordList(): List<JsonElement> {
+        if (isJsonArray) return asJsonArray.toList()
+        if (!isJsonObject) return emptyList()
+
+        val obj = asJsonObject
+
+        for (key in listOf("data", "results", "records", "forwardAlerts")) {
+            val child = obj.get(key)
+            if (child != null && child.isJsonArray) {
+                return child.asJsonArray.toList()
+            }
+        }
+
+        return if (
+            obj.has("forwardAlertId") || obj.has("id")
+        ) {
+            listOf(this)
+        } else {
+            emptyList()
+        }
     }
 }

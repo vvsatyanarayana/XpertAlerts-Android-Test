@@ -1,4 +1,3 @@
-
 package com.aquila.pocxpertalerts.data.repository
 
 import com.aquila.pocxpertalerts.data.remote.ApiService
@@ -8,6 +7,67 @@ import com.google.gson.JsonElement
 class ForwardAlertsRepository(
     private val api: ApiService = RetrofitClient.apiService
 ) {
+    suspend fun getForwardAlerts(
+        baseUserId: String,
+        applicationIds: String,
+        sessionId: String,
+        searchName: String = "",
+        searchEmail: String = "",
+        searchActive: Int = 2,
+        searchAppId: String = "0"
+    ): JsonElement {
+        return api.getForwardAlertsList(
+            baseUserId = baseUserId,
+            lowerBound = 0,
+            upperBound = 100,
+            searchName = searchName,
+            applicationIds = applicationIds,
+            searchEmail = searchEmail,
+            searchActive = searchActive,
+            searchAppId = searchAppId,
+            sessionId = sessionId
+        )
+    }
+
+    suspend fun updateUserStatus(
+        userId: String,
+        status: String,
+        mappedUserId: String,
+        applicationId: String,
+        sessionId: String
+    ): JsonElement {
+        return api.updateForwardAlertsUserStatus(
+            userId = userId,
+            status = status,
+            mappedUserId = mappedUserId,
+            applicationId = applicationId,
+            sessionId = sessionId
+        )
+    }
+
+    suspend fun updateAllStatus(
+        userId: String,
+        status: String,
+        sessionId: String
+    ): JsonElement {
+        return api.updateForwardAlertsStatus(
+            userId = userId,
+            status = status,
+            sessionId = sessionId
+        )
+    }
+
+    suspend fun deleteForwardAlert(
+        forwardAlertId: String,
+        sessionId: String
+    ): JsonElement {
+        return api.deleteForwardAlertUser(
+            forwardAlertId = forwardAlertId,
+            sessionId = sessionId
+        )
+    }
+
+
 
     suspend fun getApplications(
         userId: String,
@@ -44,8 +104,7 @@ class ForwardAlertsRepository(
             sessionId = sessionId
         )
     }
-
-    suspend fun checkDuplicate(
+    suspend fun getDuplicateForwardAlert(
         forwardAlertId: String,
         baseUserId: String,
         mappedUserId: String,
@@ -61,7 +120,7 @@ class ForwardAlertsRepository(
         )
     }
 
-    suspend fun saveMapping(
+    suspend fun saveMappedUser(
         forwardAlertId: String,
         baseUserId: String,
         mappedUserId: String,
@@ -83,26 +142,12 @@ class ForwardAlertsRepository(
         )
     }
 
-    suspend fun getForwardAlerts(
-        baseUserId: String,
-        applicationIds: String,
-        sessionId: String,
-        searchName: String = "",
-        searchEmail: String = "",
-        searchActive: Int = -1,
-        searchAppId: String = "",
-        lowerBound: Int = 0,
-        upperBound: Int = 100
+    suspend fun getForwardAlertDetails(
+        mappedUserId: String,
+        sessionId: String
     ): JsonElement {
-        return api.getForwardAlertsList(
-            baseUserId = baseUserId,
-            lowerBound = lowerBound,
-            upperBound = upperBound,
-            searchName = searchName,
-            applicationIds = applicationIds,
-            searchEmail = searchEmail,
-            searchActive = searchActive,
-            searchAppId = searchAppId,
+        return api.getBaseUserDetailsById(
+            mapUserId = mappedUserId,
             sessionId = sessionId
         )
     }

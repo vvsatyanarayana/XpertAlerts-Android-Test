@@ -20,6 +20,18 @@ interface ApiService {
         @QueryMap parameters: Map<String, String>
     ): JsonElement
 
+    @GET("getArchivedAlertsForDevices")
+    suspend fun getArchivedAlertsForDevices(
+        @Query("userId") userId: String,
+        @Query("startDate") startDate: String,
+        @Query("endDate") endDate: String,
+        @Query("searchByKeyword") searchByKeyword: String,
+        @Query("viewByFlag") viewByFlag: String,
+        @Query("status") status: String,
+        @Query("emailStatus") emailStatus: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
     @GET("getApplicationList")
     suspend fun getApplicationList(
         @Query("userId") userId: String,

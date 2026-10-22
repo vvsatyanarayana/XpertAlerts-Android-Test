@@ -1,15 +1,19 @@
 
 package com.aquila.pocxpertalerts.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,16 +28,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
@@ -50,34 +57,62 @@ fun SettingsScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current.applicationContext
-    val settingsDataStore = androidx.compose.runtime.remember(context) {
+
+    val settingsDataStore = remember(context) {
         SettingsDataStore(context)
     }
 
-    val factory = androidx.compose.runtime.remember(settingsDataStore) {
+    val factory = remember(settingsDataStore) {
         SettingsViewModelFactory(settingsDataStore)
     }
 
-    val viewModel: SettingsViewModel = viewModel(factory = factory)
+    val viewModel: SettingsViewModel = viewModel(
+        factory = factory
+    )
+
     val uiState by viewModel.uiState.collectAsState()
+
+    // Display messages as popup Toasts
+    // Display messages as popup Toasts
+    // Display messages as popup Toasts
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let { message ->
+            val displayMessage = message
+                .replace(Regex("\\s*\\(HTTP\\s*\\d+\\)"), "")
+                .replace(Regex("\\s*\\d{3}\\s+OK"), "")
+                .trim()
+
+            if (displayMessage.isNotBlank()) {
+                Toast.makeText(
+                    context,
+                    displayMessage,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(White)
     ) {
+
         // Top bar
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(59.dp)
+                .height(69.dp)
                 .background(XpertOrange)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Back button slightly lower
             IconButton(
                 onClick = onBackClick,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 4.dp)
+                    .offset(y = 5.dp)
+                    .size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
@@ -87,11 +122,16 @@ fun SettingsScreen(
                 )
             }
 
+            // Title centered across the full toolbar
             Text(
                 text = "Alerts Management System",
                 color = White,
                 fontSize = 16.sp,
-                modifier = Modifier.weight(2.5f)
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 56.dp)
             )
         }
 
@@ -101,8 +141,11 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp)
         ) {
-            Spacer(modifier = Modifier.height(34.dp))
+            Spacer(
+                modifier = Modifier.height(34.dp)
+            )
 
+            // Server URL field
             OutlinedTextField(
                 value = uiState.webServiceUrl,
                 onValueChange = viewModel::onUrlChanged,
@@ -134,15 +177,21 @@ fun SettingsScreen(
                     )
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(
+                modifier = Modifier.height(18.dp)
+            )
 
+            // Test and Save buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Button(
-                    onClick = { viewModel.testUrl() },
-                    enabled = !uiState.isTesting && !uiState.isSaving,
+                    onClick = {
+                        viewModel.testUrl()
+                    },
+                    enabled = !uiState.isTesting &&
+                            !uiState.isSaving,
                     modifier = Modifier
                         .weight(1f)
                         .height(35.dp),
@@ -160,13 +209,19 @@ fun SettingsScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Test", fontSize = 14.sp)
+                        Text(
+                            text = "Test",
+                            fontSize = 14.sp
+                        )
                     }
                 }
 
                 Button(
-                    onClick = { viewModel.saveUrl() },
-                    enabled = !uiState.isSaving && !uiState.isTesting,
+                    onClick = {
+                        viewModel.saveUrl()
+                    },
+                    enabled = !uiState.isSaving &&
+                            !uiState.isTesting,
                     modifier = Modifier
                         .weight(1f)
                         .height(35.dp),
@@ -184,33 +239,29 @@ fun SettingsScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Save", fontSize = 14.sp)
+                        Text(
+                            text = "Save",
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
 
-            uiState.message?.let { message ->
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = message,
-                    color = if (uiState.isError) Color.Red else XpertGreen,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-            }
+            // No message Text is needed here.
+            // Messages are displayed through Toast popups.
         }
     }
 }
 
 @Preview(
     showBackground = true,
-    showSystemUi = true,
-
+    showSystemUi = true
 )
 @Composable
 fun SettingsScreenPreview() {
     XpertAlertsTheme {
-        SettingsScreen(onBackClick = {})
+        SettingsScreen(
+            onBackClick = {}
+        )
     }
 }
