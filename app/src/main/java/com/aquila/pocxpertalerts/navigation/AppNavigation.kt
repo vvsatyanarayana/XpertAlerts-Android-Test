@@ -57,8 +57,14 @@ import com.aquila.pocxpertalerts.ui.screens.ChangePasswordScreen
 import com.aquila.pocxpertalerts.ui.screens.ForwardAlertItem
 import com.aquila.pocxpertalerts.ui.screens.ForwardAlertEditDetails
 import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModel
-
-
+import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsCache
+import com.aquila.pocxpertalerts.data.repository.ArchivedSearchPreferences
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.aquila.pocxpertalerts.data.repository.ArchivedDynamicAction
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -110,14 +116,28 @@ fun AppNavigation() {
 
     val appContext = LocalContext.current.applicationContext
 
+    val archivedSearchPreferences = remember(appContext) {
+        ArchivedSearchPreferences(appContext)
+    }
+
+    val archivedCache = remember(appContext) {
+        ArchivedAlertsCache(appContext)
+    }
+
     // Shared by the archived list and search destinations so results remain available after searching.
     val archivedRepository = remember {
         ArchivedAlertsRepository(RetrofitClient.apiService)
     }
-    val archivedFactory = remember(archivedRepository) {
-        ArchivedAlertsViewModelFactory(archivedRepository)
+
+    val archivedFactory = remember(archivedRepository, archivedCache) {
+        ArchivedAlertsViewModelFactory(
+            repository = archivedRepository,
+            cache = archivedCache
+        )
     }
-    val archivedViewModel: ArchivedAlertsViewModel = viewModel(factory = archivedFactory)
+
+    val archivedViewModel: ArchivedAlertsViewModel =
+        viewModel(factory = archivedFactory)
     val archivedAlerts by archivedViewModel.alerts.collectAsState()
     val archivedLoading by archivedViewModel.isLoading.collectAsState()
     val archivedError by archivedViewModel.errorMessage.collectAsState()
@@ -159,6 +179,26 @@ fun AppNavigation() {
         mutableStateOf(null)
     }
 
+    val scope = rememberCoroutineScope()
+
+    var pendingDeleteAction by remember {
+        mutableStateOf<ArchivedDynamicAction?>(null)
+    }
+
+    var showDeleteConfirmation by remember {
+        mutableStateOf(false)
+    }
+
+    var deleteMessage by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var isDeleting by remember {
+        mutableStateOf(false)
+    }
+
+
+
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
@@ -173,10 +213,7 @@ fun AppNavigation() {
                 LoginScreen(
                     onLoginSuccess = { user ->
                         loggedInUser = user
-                        archivedViewModel.load(
-                            userId = user.id.toString(),
-                            sessionId = user.sessionId.orEmpty()
-                        )
+
 
                         // Restore this user's last searched alerts.
                         searchedAlerts = searchPersistence.loadAlerts(
@@ -359,10 +396,13 @@ fun AppNavigation() {
                 }
 
                 LaunchedEffect(user?.id, user?.sessionId) {
-                    if (user != null && archivedAlerts.isEmpty()) {
+                    if (user != null) {
+                        val criteria = archivedSearchPreferences.load()
+
                         archivedViewModel.load(
                             userId = user.id.toString(),
-                            sessionId = user.sessionId.orEmpty()
+                            sessionId = user.sessionId.orEmpty(),
+                            criteria = criteria
                         )
                     }
                 }
@@ -394,9 +434,6 @@ fun AppNavigation() {
                         alert = alert,
                         onBackClick = {
                             navController.popBackStack()
-                        },
-                        onDeleteClick = {
-                            // UI-only for now; deletion is not connected
                         }
                     )
                 } else {
@@ -405,6 +442,7 @@ fun AppNavigation() {
                     }
                 }
             }
+
 
             // ----------------------------------------------------
             // PROFILE
@@ -586,6 +624,10 @@ fun AppNavigation() {
                     },
                     onSearchClick = { criteria ->
                         if (user != null) {
+                            // Save the filters selected by the user.
+                            archivedSearchPreferences.save(criteria)
+
+                            // Load the matching cached results, then refresh from the API.
                             archivedViewModel.load(
                                 userId = user.id.toString(),
                                 sessionId = user.sessionId.orEmpty(),

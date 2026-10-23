@@ -15,19 +15,46 @@ data class ArchivedAlertDto(
     val errorCode: Int = 0,
     val errorMessage: String = ""
 ) {
+
     companion object {
         fun fromJson(json: JsonObject): ArchivedAlertDto {
+
             fun string(vararg keys: String): String {
                 for (key in keys) {
                     val value = json.get(key)
+
                     if (value != null && !value.isJsonNull) {
-                        return runCatching { value.asString }.getOrDefault(value.toString().trim('"'))
+                        return runCatching {
+                            if (value.isJsonPrimitive && value.asJsonPrimitive.isNumber) {
+                                value.asBigDecimal.toPlainString()
+                            } else {
+                                value.asString
+                            }
+                        }.getOrDefault(value.toString().trim('"'))
                     }
                 }
                 return ""
             }
-            fun long(vararg keys: String): Long = string(*keys).toLongOrNull() ?: 0L
-            fun int(vararg keys: String): Int = string(*keys).toIntOrNull() ?: 0
+
+            fun long(vararg keys: String): Long {
+                for (key in keys) {
+                    val value = json.get(key)
+
+                    if (value != null && !value.isJsonNull) {
+                        val parsed = runCatching {
+                            value.asBigDecimal.longValueExact()
+                        }.getOrNull()
+
+                        if (parsed != null) return parsed
+                    }
+                }
+                return 0L
+            }
+
+            fun int(vararg keys: String): Int =
+                string(*keys).toBigDecimalOrNull()
+                    ?.toInt()
+                    ?: 0
 
             return ArchivedAlertDto(
                 archiveId = long("archiveId", "archiveID", "id", "amsId"),
@@ -44,4 +71,5 @@ data class ArchivedAlertDto(
             )
         }
     }
+
 }

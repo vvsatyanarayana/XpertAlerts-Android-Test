@@ -10,6 +10,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.aquila.pocxpertalerts.data.repository.ArchivedSearchCriteria
 
+
+
+data class ArchivedDynamicAction(
+    val caption: String,
+    val action: String,
+    val amsAction: String,
+    val confirmationPrompt: String
+)
+
 class ArchivedAlertsRepository(private val apiService: ApiService) {
     suspend fun getArchivedAlerts(
         userId: String,
@@ -50,7 +59,10 @@ class ArchivedAlertsRepository(private val apiService: ApiService) {
                 emailStatus = emailStatus.toString(),
                 sessionId = sessionId
             )
-            Log.d("ArchivedAlertsAPI", "Archived alerts response received")
+            Log.d(
+                "ArchivedAlertsAPI",
+                "Raw archived alerts response: $response"
+            )
 
             Result.success(parseResponse(response))
         } catch (e: Exception) {
@@ -91,4 +103,161 @@ class ArchivedAlertsRepository(private val apiService: ApiService) {
         calendar.add(java.util.Calendar.DAY_OF_YEAR, -daysBack)
         return java.text.SimpleDateFormat("MM-dd-yyyy", java.util.Locale.US).format(calendar.time)
     }
+
+
+    suspend fun getDeleteAction(
+        userId: String,
+        sessionId: String,
+        applicationId: Long,
+        alertDefId: Int
+    ): Result<ArchivedDynamicAction> = withContext(Dispatchers.IO) {
+        try {
+            require(userId.isNotBlank()) { "User ID is missing." }
+            require(sessionId.isNotBlank()) { "Session ID is missing." }
+            require(applicationId > 0L) { "Application ID is missing." }
+            require(alertDefId > 0) { "Alert definition ID is missing." }
+
+            val response = apiService.getAlertButtonDetails(
+                applicationId = applicationId.toString(),
+                alertDefId = alertDefId.toString(),
+                userId = userId,
+                sessionId = sessionId
+            )
+            Log.d(
+                "ArchivedDelete",
+                "getAlertButtonDetails response: $response"
+            )
+
+            require(response.isJsonArray && response.asJsonArray.size() > 0) {
+                "The server did not return any available actions."
+            }
+
+            val obj = response.asJsonArray[0].asJsonObject
+            val errorCode = obj.get("errorCode")
+                ?.takeUnless { it.isJsonNull }
+                ?.let { runCatching { it.asInt }.getOrNull() } ?: 0
+
+            if (errorCode == 412) {
+                throw IllegalStateException(
+                    "Your session has expired. Please sign in again."
+                )
+            }
+            if (errorCode > 0) {
+                throw IllegalStateException(
+                    obj.get("message")?.takeUnless { it.isJsonNull }
+                        ?.asString ?: "Unable to retrieve available actions."
+                )
+            }
+
+            val captions = obj.get("captions")
+                ?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+                .split(",")
+            val actions = obj.get("actions")
+                ?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+                .split(",")
+            val amsActions = obj.get("AmsActionIds")
+                ?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+                .split(",")
+            val prompts = obj.get("confirmPrompt")
+                ?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+                .split(",")
+
+            val deleteIndex = captions.indexOfFirst {
+                it.trim().equals("Dismiss", ignoreCase = true)
+
+            }
+
+            require(
+                deleteIndex >= 0 &&
+                        deleteIndex < actions.size &&
+                        deleteIndex < amsActions.size &&
+                        deleteIndex < prompts.size
+            ) {
+                "The server did not provide a usable Dismiss action."
+            }
+
+            Result.success(
+                ArchivedDynamicAction(
+                    caption = captions[deleteIndex].trim(),
+                    action = actions[deleteIndex].trim(),
+                    amsAction = amsActions[deleteIndex].trim(),
+                    confirmationPrompt = prompts[deleteIndex].trim()
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun executeArchivedAction(
+        userId: String,
+        sessionId: String,
+        applicationId: Long,
+        archiveId: Long,
+        alertId: Int,
+        aggregateAlertId: String,
+        action: ArchivedDynamicAction
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            require(userId.isNotBlank()) { "User ID is missing." }
+            require(sessionId.isNotBlank()) { "Session ID is missing." }
+            require(applicationId > 0L) { "Application ID is missing." }
+            require(archiveId > 0L) {
+                "The archived record ID is missing. The alert was not deleted."
+            }
+
+            val response = apiService.processDynamicActions(
+                userId = userId,
+                applicationId = applicationId.toString(),
+                captions = action.caption,
+                actions = action.action,
+                amsActions = action.amsAction,
+                ids = archiveId.toString(),
+                alertIds = alertId.toString(),
+                aggregateAlertIds = aggregateAlertId,
+                sessionId = sessionId
+            )
+
+            require(response.isJsonArray && response.asJsonArray.size() > 0) {
+                "The server returned an unexpected delete response."
+            }
+
+            val first = response.asJsonArray[0]
+            require(first.isJsonObject) {
+                "The server returned an unexpected delete response."
+            }
+
+            val obj = first.asJsonObject
+            val errorCode = obj.get("errorCode")
+                ?.takeUnless { it.isJsonNull }
+                ?.let { runCatching { it.asInt }.getOrNull() } ?: 0
+
+            if (errorCode == 412) {
+                throw IllegalStateException(
+                    "Your session has expired. Please sign in again."
+                )
+            }
+            if (errorCode > 0) {
+                throw IllegalStateException(
+                    obj.get("message")?.takeUnless { it.isJsonNull }
+                        ?.asString ?: "The server could not delete this alert."
+                )
+            }
+
+            val returnFlag = obj.get("returnFlag")
+                ?.takeUnless { it.isJsonNull }
+                ?.let { runCatching { it.asLong }.getOrNull() } ?: 0L
+
+            if (returnFlag <= 0L) {
+                throw IllegalStateException(
+                    "The server did not confirm that the action succeeded."
+                )
+            }
+
+            Result.success("Archived alert deleted successfully.")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 }

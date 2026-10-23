@@ -191,5 +191,27 @@ interface ApiService {
     ): JsonElement
 
 
+    @GET("getAlertButtonDetails")
+    suspend fun getAlertButtonDetails(
+        @Query("applicationId") applicationId: String,
+        @Query("alertDefId") alertDefId: String,
+        @Query("userId") userId: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+    @GET("processDynamicActions")
+    suspend fun processDynamicActions(
+        @Query("userId") userId: String,
+        @Query("applicationId") applicationId: String,
+        @Query("captions") captions: String,
+        @Query("actions") actions: String,
+        @Query("amsActions") amsActions: String,
+        @Query("ids") ids: String,
+        @Query("alertIds") alertIds: String,
+        @Query("aggregateAlertIds") aggregateAlertIds: String,
+        @Query("sessionId") sessionId: String
+    ): JsonElement
+
+
 
 }
