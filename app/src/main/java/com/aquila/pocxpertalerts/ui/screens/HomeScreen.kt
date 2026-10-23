@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -72,6 +73,11 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+
 
 private val LightOrange = Color(0xFFFFF1E8)
 private val SelectedAlertColor = Color(0xFFFFF4E9)
@@ -93,7 +99,9 @@ fun HomeScreen(
     onPasswordClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onAboutClick: () -> Unit,
-    alerts: List<AlertDto> = emptyList()
+    alerts: List<AlertDto> = emptyList(),
+    isLoading: Boolean = false,
+
 ) {
     var showBottomMenu by rememberSaveable { mutableStateOf(false) }
     var showTopMenu by remember { mutableStateOf(false) }
@@ -102,6 +110,23 @@ fun HomeScreen(
 
     var selectedDestination by rememberSaveable {
         mutableStateOf("alerts")
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                selectedDestination = "alerts"
+                showBottomMenu = false
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     var selectedAlertIds by remember {
@@ -220,6 +245,16 @@ fun HomeScreen(
                     },
                     onSearchClick = onSearchClick
                 )
+                // Show the spinner on Home while the API is searching.
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(42.dp),
+                        color = XpertOrange,
+                        strokeWidth = 4.dp
+                    )
+                }
             }
 
             // BOTTOM MENU PANEL
