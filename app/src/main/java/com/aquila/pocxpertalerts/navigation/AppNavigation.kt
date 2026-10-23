@@ -44,7 +44,6 @@ import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
 import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
 import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsRepository
-import com.aquila.pocxpertalerts.data.repository.ArchivedSearchCriteria
 import com.aquila.pocxpertalerts.viewmodel.ArchivedAlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.ArchivedAlertsViewModelFactory
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
@@ -59,12 +58,13 @@ import com.aquila.pocxpertalerts.ui.screens.ForwardAlertEditDetails
 import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModel
 import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsCache
 import com.aquila.pocxpertalerts.data.repository.ArchivedSearchPreferences
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
+
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
+
 import com.aquila.pocxpertalerts.data.repository.ArchivedDynamicAction
+import com.aquila.pocxpertalerts.data.repository.ChangePasswordRepository
+import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModel
+import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModelFactory
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
@@ -456,17 +456,55 @@ fun AppNavigation() {
                 )
             }
 
-            // ----------------------------------------------------
-            // CHANGE PASSWORD
-            // ----------------------------------------------------
+            // ============================================================
+            // Change password
+            // ============================================================
 
             composable(Screen.ChangePassword.route) {
+                val user = loggedInUser
+
+                val changePasswordRepository = remember {
+                    ChangePasswordRepository(
+                        RetrofitClient.apiService
+                    )
+                }
+
+                val changePasswordFactory = remember(changePasswordRepository) {
+                    ChangePasswordViewModelFactory(
+                        changePasswordRepository
+                    )
+                }
+
+                val changePasswordViewModel: ChangePasswordViewModel =
+                    viewModel(factory = changePasswordFactory)
+
+                val changePasswordState by
+                changePasswordViewModel.uiState.collectAsState()
+
                 ChangePasswordScreen(
+                    loginId = user?.loginId.orEmpty(),
                     onBackClick = {
                         navController.popBackStack()
+                    },
+                    isLoading = changePasswordState.isLoading,
+                    message = changePasswordState.message,
+                    isSuccess = changePasswordState.isSuccess,
+                    onSaveClick = { loginId, oldPassword, newPassword ->
+                        if (user == null) {
+                            return@ChangePasswordScreen
+                        }
+
+                        changePasswordViewModel.changePassword(
+                            username = loginId,
+                            userId = user.id.toString(),
+                            oldPassword = oldPassword,
+                            newPassword = newPassword,
+                            confirmPassword = newPassword
+                        )
                     }
                 )
             }
+
 
             // ----------------------------------------------------
             // SETTINGS

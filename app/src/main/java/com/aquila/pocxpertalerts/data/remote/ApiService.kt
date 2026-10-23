@@ -212,6 +212,16 @@ interface ApiService {
         @Query("sessionId") sessionId: String
     ): JsonElement
 
+// ============================================================
+// CHANGE PASSWORD API
+// ============================================================
 
+    @GET("saveChangePassword")
+    suspend fun saveChangePassword(
+        @Query("username") username: String,
+        @Query("oldPwd") oldPassword: String,
+        @Query("newPwd") newPassword: String,
+        @Query("userId") userId: String
+    ): JsonElement
 
 }

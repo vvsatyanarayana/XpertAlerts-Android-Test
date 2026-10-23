@@ -1,6 +1,9 @@
+
 package com.aquila.pocxpertalerts.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,26 +11,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,731 +35,333 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import androidx.compose.ui.unit.sp
 
+private val ChangePasswordOrange = Color(0xFFF47716)
+private val ChangePasswordBorder = Color(0xFF777777)
+private val ChangePasswordHint = Color(0xFF777777)
+private val ChangePasswordText = Color(0xFF555555)
+private val ChangePasswordFieldBackground = Color(0xFFF7F7F7)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangePasswordScreen(
-    onBackClick: () -> Unit = {}
-) {
+    loginId: String = "",
+    onBackClick: () -> Unit = {},
+    isLoading: Boolean = false,
+    message: String? = null,
+    isSuccess: Boolean = false,
+    onSaveClick: (
+        loginId: String,
+        oldPassword: String,
+        newPassword: String
+    ) -> Unit = { _, _, _ -> }
+){
 
-    var email by remember {
-        mutableStateOf("")
-    }
+    var oldPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
-    var otp by remember {
-        mutableStateOf("")
-    }
+    var oldPasswordVisible by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    var newPassword by remember {
-        mutableStateOf("")
-    }
-
-    var confirmPassword by remember {
-        mutableStateOf("")
-    }
-
-    var otpSent by remember {
-        mutableStateOf(false)
-    }
-
-    var passwordReset by remember {
-        mutableStateOf(false)
-    }
-
-    var newPasswordVisible by remember {
-        mutableStateOf(false)
-    }
-
-    var confirmPasswordVisible by remember {
-        mutableStateOf(false)
-    }
-
-
-    // =========================================================
-    // PASSWORD VALIDATION
-    // =========================================================
-
-    val hasMinLength = newPassword.length >= 8
-
-    val hasUppercase =
-        newPassword.any { it.isUpperCase() }
-
-    val hasLowercase =
-        newPassword.any { it.isLowerCase() }
-
-    val hasNumber =
-        newPassword.any { it.isDigit() }
-
-    val hasSpecial =
-        newPassword.any {
-            !it.isLetterOrDigit()
-        }
-
-    val passwordStrength =
-        listOf(
-            hasMinLength,
-            hasUppercase,
-            hasLowercase,
-            hasNumber,
-            hasSpecial
-        ).count { it }
-
-    val passwordsMatch =
-        newPassword.isNotEmpty() &&
-                newPassword == confirmPassword
-
+    var errorMessage by remember { mutableStateOf("") }
 
     Scaffold(
-
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.White,
         topBar = {
-
-            TopAppBar(
-
-                title = {
-                    Text("Reset Password")
-                },
-
-                navigationIcon = {
-
-                    IconButton(
-                        onClick = onBackClick
-                    ) {
-
-                        Icon(
-                            imageVector =
-                                Icons.Default.ArrowBack,
-                            contentDescription =
-                                "Back"
-                        )
-                    }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(ChangePasswordOrange),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
-            )
-        }
 
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Change Password",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(44.dp))
+            }
+        }
     ) { innerPadding ->
 
         Column(
-
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .padding(innerPadding)
-                .verticalScroll(
-                    rememberScrollState()
-                )
-                .padding(20.dp),
-
-            verticalArrangement =
-                Arrangement.Top
+                .padding(horizontal = 12.dp)
+                .padding(top = 14.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // =================================================
-            // HEADER
-            // =================================================
-
-            Text(
-                text = "Forgot your password?",
-                style =
-                    MaterialTheme
-                        .typography
-                        .headlineSmall
-            )
-
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
-
-            Text(
-                text =
-                    "Enter your registered email address to receive an OTP and reset your password.",
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodyMedium
-            )
-
-            Spacer(
-                modifier = Modifier.height(24.dp)
-            )
-
-
-            // =================================================
-            // EMAIL
-            // =================================================
-
             OutlinedTextField(
-
-                value = email,
-
-                onValueChange = {
-                    email = it
-                },
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                label = {
-                    Text("Email Address")
-                },
-
-                leadingIcon = {
-
-                    Icon(
-                        imageVector =
-                            Icons.Default.Email,
-                        contentDescription =
-                            null
+                value = loginId,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                placeholder = {
+                    Text(
+                        text = "Login ID",
+                        fontSize = 12.sp,
+                        color = ChangePasswordHint,
+                        maxLines = 1
                     )
                 },
-
-                keyboardOptions =
-                    KeyboardOptions(
-                        keyboardType =
-                            KeyboardType.Email
-                    ),
-
                 singleLine = true,
-
-                enabled = !otpSent
+                shape = RoundedCornerShape(50.dp),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                    focusedContainerColor = ChangePasswordFieldBackground,
+                    unfocusedContainerColor = ChangePasswordFieldBackground,
+                    cursorColor = ChangePasswordOrange
+                ),
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 12.sp,
+                    color = ChangePasswordText
+                )
             )
 
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(
-                modifier = Modifier.height(16.dp)
+            PasswordInput(
+                value = oldPassword,
+                onValueChange = {
+                    oldPassword = it
+                    errorMessage = ""
+                },
+                placeholder = "Old Password",
+                passwordVisible = oldPasswordVisible,
+                onVisibilityChange = {
+                    oldPasswordVisible = !oldPasswordVisible
+                }
             )
 
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // =================================================
-            // SEND OTP
-            // =================================================
+            PasswordInput(
+                value = newPassword,
+                onValueChange = {
+                    newPassword = it
+                    errorMessage = ""
+                },
+                placeholder = "New Password",
+                passwordVisible = newPasswordVisible,
+                onVisibilityChange = {
+                    newPasswordVisible = !newPasswordVisible
+                }
+            )
 
-            if (!otpSent) {
+            Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
+            PasswordInput(
+                value = confirmPassword,
+                onValueChange = {
+                    confirmPassword = it
+                    errorMessage = ""
+                },
+                placeholder = "Re-enter Your Password",
+                passwordVisible = confirmPasswordVisible,
+                onVisibilityChange = {
+                    confirmPasswordVisible = !confirmPasswordVisible
+                }
+            )
 
-                    onClick = {
+            Spacer(modifier = Modifier.height(13.dp))
 
-                        // UI ONLY
-                        // API/OTP integration later
+            Button(
+                onClick = {
+                    errorMessage = when {
+                        loginId.isBlank() ->
+                            "Please enter your Login ID"
 
-                        otpSent = true
-                    },
+                        oldPassword.isBlank() ->
+                            "Please enter your old password"
 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
+                        newPassword.isBlank() ->
+                            "Please enter your new password"
 
-                    enabled =
-                        email.isNotBlank()
-                ) {
+                        confirmPassword.isBlank() ->
+                            "Please re-enter your new password"
 
-                    Text("Send OTP")
+                        newPassword != confirmPassword ->
+                            "Passwords do not match"
+
+                        oldPassword == newPassword ->
+                            "New password must differ from old password"
+
+                        newPassword.length < 6 ->
+                            "Password must be at least 6 characters"
+
+                        newPassword.length > 16 ->
+                            "Password should not exceed 16 characters"
+
+                        newPassword.none { it.isDigit() } ->
+                            "Password must contain at least one digit"
+
+                        newPassword.none { !it.isLetterOrDigit() } ->
+                            "Password must contain a special character"
+
+                        else -> ""
+                    }
+
+                    if (errorMessage.isEmpty()) {
+                        onSaveClick(
+                            loginId.trim(),
+                            oldPassword,
+                            newPassword
+                        )
+                    }
+                },
+                enabled = !isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(45.dp),
+                shape = RoundedCornerShape(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ChangePasswordOrange,
+                    contentColor = Color.White,
+                    disabledContainerColor = ChangePasswordOrange.copy(
+                        alpha = 0.6f
+                    )
+                )
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Save",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
 
+            val displayedMessage = errorMessage.ifBlank {
+                message.orEmpty()
+            }
 
-            // =================================================
-            // OTP + PASSWORD SECTION
-            // =================================================
-
-            if (otpSent) {
-
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
-                Card(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                MaterialTheme
-                                    .colorScheme
-                                    .surfaceVariant
-                        )
-                ) {
-
-                    Column(
-
-                        modifier =
-                            Modifier.padding(16.dp)
-                    ) {
-
-                        Text(
-                            text = "OTP Verification",
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .titleMedium
-                        )
-
-                        Spacer(
-                            modifier =
-                                Modifier.height(4.dp)
-                        )
-
-                        Text(
-                            text =
-                                "Enter the OTP sent to your registered email address.",
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .bodySmall
-                        )
-                    }
-                }
-
-                Spacer(
-                    modifier =
-                        Modifier.height(16.dp)
-                )
-
-
-                // =================================================
-                // OTP
-                // =================================================
-
-                OutlinedTextField(
-
-                    value = otp,
-
-                    onValueChange = {
-
-                        if (
-                            it.length <= 6 &&
-                            it.all { char ->
-                                char.isDigit()
-                            }
-                        ) {
-                            otp = it
-                        }
-                    },
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    label = {
-                        Text("Enter OTP")
-                    },
-
-                    singleLine = true,
-
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType =
-                                KeyboardType.Number
-                        )
-                )
-
-
-                Spacer(
-                    modifier =
-                        Modifier.height(8.dp)
-                )
+            if (displayedMessage.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Didn't receive the OTP? Resend OTP",
-                    style =
-                        MaterialTheme
-                            .typography
-                            .bodySmall
-                )
-
-
-                Spacer(
-                    modifier =
-                        Modifier.height(20.dp)
-                )
-
-
-                // =================================================
-                // NEW PASSWORD
-                // =================================================
-
-                OutlinedTextField(
-
-                    value = newPassword,
-
-                    onValueChange = {
-                        newPassword = it
+                    text = displayedMessage,
+                    color = if (isSuccess && errorMessage.isBlank()) {
+                        Color(0xFF2E7D32)
+                    } else {
+                        MaterialTheme.colorScheme.error
                     },
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    label = {
-                        Text("New Password")
-                    },
-
-                    singleLine = true,
-
-                    visualTransformation =
-                        if (newPasswordVisible)
-                            VisualTransformation.None
-                        else
-                            PasswordVisualTransformation(),
-
-                    trailingIcon = {
-
-                        IconButton(
-
-                            onClick = {
-
-                                newPasswordVisible =
-                                    !newPasswordVisible
-                            }
-
-                        ) {
-
-                            Icon(
-
-                                imageVector =
-                                    if (newPasswordVisible)
-                                        Icons.Default.VisibilityOff
-                                    else
-                                        Icons.Default.Visibility,
-
-                                contentDescription =
-                                    "Show password"
-                            )
-                        }
-                    }
+                    fontSize = 12.sp,
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-
-                Spacer(
-                    modifier =
-                        Modifier.height(12.dp)
-                )
-
-
-                // =================================================
-                // PASSWORD STRENGTH
-                // =================================================
-
-                if (newPassword.isNotEmpty()) {
-
-                    Text(
-                        text = "Password strength",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelLarge
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(6.dp)
-                    )
-
-                    LinearProgressIndicator(
-
-                        progress = {
-                            passwordStrength / 5f
-                        },
-
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(8.dp)
-                    )
-
-                    PasswordRequirement(
-                        text = "At least 8 characters",
-                        satisfied = hasMinLength
-                    )
-
-                    PasswordRequirement(
-                        text = "One uppercase letter",
-                        satisfied = hasUppercase
-                    )
-
-                    PasswordRequirement(
-                        text = "One lowercase letter",
-                        satisfied = hasLowercase
-                    )
-
-                    PasswordRequirement(
-                        text = "One number",
-                        satisfied = hasNumber
-                    )
-
-                    PasswordRequirement(
-                        text = "One special character",
-                        satisfied = hasSpecial
-                    )
-                }
-
-
-                Spacer(
-                    modifier =
-                        Modifier.height(16.dp)
-                )
-
-
-                // =================================================
-                // CONFIRM PASSWORD
-                // =================================================
-
-                OutlinedTextField(
-
-                    value = confirmPassword,
-
-                    onValueChange = {
-                        confirmPassword = it
-                    },
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    label = {
-                        Text("Confirm New Password")
-                    },
-
-                    singleLine = true,
-
-                    isError =
-                        confirmPassword.isNotEmpty() &&
-                                !passwordsMatch,
-
-                    visualTransformation =
-                        if (confirmPasswordVisible)
-                            VisualTransformation.None
-                        else
-                            PasswordVisualTransformation(),
-
-                    trailingIcon = {
-
-                        IconButton(
-
-                            onClick = {
-
-                                confirmPasswordVisible =
-                                    !confirmPasswordVisible
-                            }
-
-                        ) {
-
-                            Icon(
-
-                                imageVector =
-                                    if (confirmPasswordVisible)
-                                        Icons.Default.VisibilityOff
-                                    else
-                                        Icons.Default.Visibility,
-
-                                contentDescription =
-                                    "Show password"
-                            )
-                        }
-                    }
-                )
-
-
-                if (
-                    confirmPassword.isNotEmpty() &&
-                    !passwordsMatch
-                ) {
-
-                    Text(
-                        text =
-                            "Passwords do not match",
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .error,
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall
-                    )
-                }
-
-
-                Spacer(
-                    modifier =
-                        Modifier.height(24.dp)
-                )
-
-
-                // =================================================
-                // RESET PASSWORD
-                // =================================================
-
-                Button(
-
-                    onClick = {
-
-                        // UI ONLY
-                        // API integration later
-
-                        passwordReset = true
-                    },
-
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-
-                    enabled =
-                        otp.length == 6 &&
-                                passwordStrength == 5 &&
-                                passwordsMatch
-                ) {
-
-                    Text("Reset Password")
-                }
-
-
-                // =================================================
-                // SUCCESS MESSAGE
-                // =================================================
-
-                if (passwordReset) {
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(16.dp)
-                    )
-
-                    Card(
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .primaryContainer
-                            )
-                    ) {
-
-                        Row(
-
-                            modifier =
-                                Modifier.padding(16.dp),
-
-                            verticalAlignment =
-                                Alignment.CenterVertically
-                        ) {
-
-                            Icon(
-                                imageVector =
-                                    Icons.Default.CheckCircle,
-                                contentDescription =
-                                    null
-                            )
-
-                            Spacer(
-                                modifier =
-                                    Modifier.padding(
-                                        horizontal = 6.dp
-                                    )
-                            )
-
-                            Text(
-                                text =
-                                    "Password reset successfully.",
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .bodyMedium
-                            )
-                        }
-                    }
-                }
             }
         }
     }
 }
 
-
-// =============================================================
-// PASSWORD REQUIREMENT
-// =============================================================
-
 @Composable
-private fun PasswordRequirement(
-    text: String,
-    satisfied: Boolean
+private fun PasswordInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    passwordVisible: Boolean,
+    onVisibilityChange: () -> Unit
 ) {
-
-    Row(
-
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-
-        verticalAlignment =
-            Alignment.CenterVertically
-    ) {
-
-        Icon(
-
-            imageVector =
-                Icons.Default.CheckCircle,
-
-            contentDescription =
-                null,
-
-            tint =
-                if (satisfied)
-                    MaterialTheme
-                        .colorScheme
-                        .primary
-                else
-                    MaterialTheme
-                        .colorScheme
-                        .outline
-        )
-
-        Spacer(
-            modifier =
-                Modifier.padding(
-                    horizontal = 4.dp
+            .height(54.dp),
+        placeholder = {
+            Text(
+                text = placeholder,
+                fontSize = 12.sp,
+                color = ChangePasswordHint,
+                maxLines = 1
+            )
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(50.dp),
+        visualTransformation = if (passwordVisible) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = onVisibilityChange,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = if (passwordVisible) {
+                        Icons.Default.Visibility
+                    } else {
+                        Icons.Default.VisibilityOff
+                    },
+                    contentDescription = if (passwordVisible) {
+                        "Hide password"
+                    } else {
+                        "Show password"
+                    },
+                    tint = ChangePasswordHint,
+                    modifier = Modifier.size(16.dp)
                 )
+            }
+        },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password
+        ),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = ChangePasswordBorder,
+            unfocusedBorderColor = ChangePasswordBorder,
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            cursorColor = ChangePasswordOrange
+        ),
+        textStyle = MaterialTheme.typography.bodySmall.copy(
+            fontSize = 12.sp,
+            color = ChangePasswordText
         )
-
-        Text(
-            text = text,
-            style =
-                MaterialTheme
-                    .typography
-                    .bodySmall
-        )
-    }
-}
-
-
-// =============================================================
-// PREVIEW
-// =============================================================
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true
-)
-@Composable
-private fun ChangePasswordScreenPreview() {
-
-    XpertAlertsTheme {
-
-        ChangePasswordScreen()
-    }
+    )
 }
