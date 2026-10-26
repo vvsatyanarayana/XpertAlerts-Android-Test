@@ -1,11 +1,10 @@
+
 package com.aquila.pocxpertalerts.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
-
 import com.aquila.pocxpertalerts.data.remote.UnsafeSslHelper
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +18,7 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLHandshakeException
 
 data class SettingsUiState(
-    val webServiceUrl: String =
-        SettingsDataStore.DEFAULT_URL,
+    val webServiceUrl: String = SettingsDataStore.DEFAULT_URL,
     val isTesting: Boolean = false,
     val isSaving: Boolean = false,
     val message: String? = null,
@@ -32,12 +30,14 @@ class SettingsViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
+
     val uiState: StateFlow<SettingsUiState> =
         _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             val savedUrl = settingsDataStore.webServiceUrl.first()
+
             _uiState.value = _uiState.value.copy(
                 webServiceUrl = savedUrl
             )
@@ -52,38 +52,63 @@ class SettingsViewModel(
         )
     }
 
+    // Test the URL currently entered in Settings.
+    // The URL is saved as the active configuration before testing.
     fun testUrl() {
         val urlText = _uiState.value.webServiceUrl.trim()
 
         if (!isValidUrl(urlText)) {
-            showResult("Please enter a valid HTTP or HTTPS URL", true)
+            showResult(
+                "Please enter a valid HTTP or HTTPS URL",
+                true
+            )
             return
         }
 
-        _uiState.value = _uiState.value.copy(
-            isTesting = true,
-            message = "Testing server connection...",
-            isError = false
-        )
-
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isTesting = true,
+                message = "Testing server connection...",
+                isError = false
+            )
+
+            // Save the exact URL being tested.
+            try {
+                withContext(Dispatchers.IO) {
+                    settingsDataStore.saveWebServiceUrl(urlText)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isTesting = false,
+                    message = "Unable to save server URL",
+                    isError = true
+                )
+                return@launch
+            }
+
             val result = withContext(Dispatchers.IO) {
                 testServer(urlText)
             }
 
             _uiState.value = _uiState.value.copy(
                 isTesting = false,
+                webServiceUrl = urlText,
                 message = result.first,
                 isError = !result.second
             )
         }
     }
 
+    // Save the URL without testing it.
+    // LoginRepository independently tests it on every login.
     fun saveUrl() {
         val urlText = _uiState.value.webServiceUrl.trim()
 
         if (!isValidUrl(urlText)) {
-            showResult("Please enter a valid HTTP or HTTPS URL", true)
+            showResult(
+                "Please enter a valid HTTP or HTTPS URL",
+                true
+            )
             return
         }
 
@@ -95,14 +120,17 @@ class SettingsViewModel(
             )
 
             try {
-                settingsDataStore.saveWebServiceUrl(urlText)
+                withContext(Dispatchers.IO) {
+                    settingsDataStore.saveWebServiceUrl(urlText)
+                }
 
                 _uiState.value = _uiState.value.copy(
                     webServiceUrl = urlText,
                     isSaving = false,
-                    message = "Server URL saved successfully",
+                    message = "Server URL saved successfully. It will be tested during login.",
                     isError = false
                 )
+
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
@@ -116,74 +144,58 @@ class SettingsViewModel(
     private fun isValidUrl(value: String): Boolean {
         return try {
             val parsed = URL(value)
+
             (parsed.protocol == "http" ||
                     parsed.protocol == "https") &&
-                    !parsed.host.isNullOrBlank()
-        } catch (_: Exception) {
+                    parsed.host.isNotBlank()
+
+        } catch (e: Exception) {
             false
         }
     }
 
-    private fun testServer(urlText: String): Pair<String, Boolean> {
-        var connection: HttpURLConnection? = null
+    // Match the old Java implementation:
+    // GET the exact URL entered and accept HTTP 200 only.
 
-        return try {
-            connection = URL(urlText)
-                .openConnection() as HttpURLConnection
+    private suspend fun testServer(
+        urlText: String
+    ): Pair<String, Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val apiService =
+                com.aquila.pocxpertalerts.data.remote.RetrofitClient
+                    .createApiService(urlText)
 
+            val response = apiService.testServerConnection()
+            val successful = response.isSuccessful
 
-            // Bypass SSL validation so the test works even when the server
-            // has an expired or self-signed certificate.
-            if (connection is HttpsURLConnection) {
-                (connection as HttpsURLConnection).apply {
-                    sslSocketFactory = UnsafeSslHelper.sslSocketFactory
-                    hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-                }
-            }
+            response.errorBody()?.close()
+            response.body()?.close()
 
-
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 3_000
-            connection.readTimeout = 3_000
-            connection.useCaches = false
-
-            val responseCode = connection.responseCode
-
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                "Server connection successful (HTTP 200)" to true
+            if (successful) {
+                "Web service connection successful" to true
             } else {
-                "Server test failed. HTTP status: $responseCode" to false
+                "Server connection failed" to false
             }
         } catch (e: Exception) {
-            val isSslError = generateSequence<Throwable>(e) { it.cause }
-                .any { it is SSLHandshakeException }
+            android.util.Log.e(
+                "SettingsViewModel",
+                "Server connection test failed for URL: $urlText",
+                e
+            )
 
-            val message = when {
-                isSslError ->
-                    "SSL certificate validation failed."
-
-                e is java.net.SocketTimeoutException ->
-                    "Connection timed out."
-
-                else ->
-                    "Server connection failed: ${e.localizedMessage ?: "Network error"}"
-            }
-
-            message to false
-        } finally {
-            connection?.disconnect()
+            "Server connection failed" to false
         }
     }
 
-    private fun showResult(message: String, isError: Boolean) {
+
+    private fun showResult(
+        message: String,
+        isError: Boolean
+    ) {
         _uiState.value = _uiState.value.copy(
             message = message,
             isError = isError,
             isTesting = false
         )
     }
-
 }
-
-
-

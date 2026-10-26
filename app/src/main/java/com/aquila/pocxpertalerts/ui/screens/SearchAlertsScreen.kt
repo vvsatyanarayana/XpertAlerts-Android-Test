@@ -393,7 +393,6 @@ fun SearchAlertsScreen(
                         .height(45.dp)
                 )
 
-                // SEARCH BUTTON — no loading animation or disabled state
                 Button(
                     onClick = {
                         onSearchClick(
@@ -405,31 +404,25 @@ fun SearchAlertsScreen(
                                 "Application" -> "2"
                                 else -> "0"
                             },
-                            applicationId,
-                            alertDefinitionId
+                            applicationId.ifBlank { "0" },
+                            alertDefinitionId.ifBlank { "0" }
                         )
                     },
+                    enabled = !isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 30.dp
-                        )
-                        .height(45.dp),
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 18.dp)
+                        .height(46.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = SearchOrange,
                         contentColor = Color.White
-                    ),
-                    contentPadding = PaddingValues(
-                        horizontal = 12.dp,
-                        vertical = 0.dp
                     )
                 ) {
                     Text(
-                        text = "Search",
-                        fontSize = 18.sp,
+                        text = if (isLoading) "Searching..." else "Search",
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -446,7 +439,16 @@ fun SearchAlertsScreen(
                     )
                 }
 
-
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = SearchOrange)
+                    }
+                }
 
                 if (!isLoading && errorMessage != null) {
                     Text(

@@ -5,9 +5,11 @@ import com.google.gson.JsonElement
 import retrofit2.http.GET
 import retrofit2.http.Query
 import retrofit2.http.QueryMap
-
+import okhttp3.ResponseBody
+import retrofit2.Response
 interface ApiService {
-
+    @GET("check")
+    suspend fun testServerConnection(): Response<ResponseBody>
     @GET("authenticateUserForDevices")
     suspend fun authenticateUserForDevices(
         @Query("username") username: String,

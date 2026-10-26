@@ -50,7 +50,7 @@ import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.viewmodel.LoginViewModel
 import com.aquila.pocxpertalerts.viewmodel.LoginViewModelFactory
-
+import androidx.compose.ui.graphics.Color
 @Composable
 fun LoginScreen(
     onLoginSuccess: (User) -> Unit,
@@ -479,17 +479,13 @@ fun LoginScreen(
             // SERVER ERROR
             // =================================================
 
+
+            // LOGIN ERROR
             if (uiState.errorMessage != null) {
-
                 Text(
-                    text =
-                        uiState.errorMessage!!,
-
+                    text = uiState.errorMessage.orEmpty(),
                     fontSize = 12.sp,
-
-                    color =
-                        androidx.compose.ui.graphics.Color.Red,
-
+                    color = Color(0xFFD32F2F),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
@@ -498,6 +494,22 @@ fun LoginScreen(
                         )
                 )
             }
+
+            // LOGIN SUCCESS MESSAGE
+            if (uiState.successMessage != null) {
+                Text(
+                    text = uiState.successMessage.orEmpty(),
+                    fontSize = 13.sp,
+                    color = Color(0xFF218838),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 8.dp,
+                            top = 8.dp
+                        )
+                )
+            }
+
 
 
             // =================================================

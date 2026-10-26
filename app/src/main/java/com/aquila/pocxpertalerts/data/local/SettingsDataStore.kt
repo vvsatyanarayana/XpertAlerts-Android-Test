@@ -19,8 +19,7 @@ class SettingsDataStore(
         private val WEB_SERVICE_URL =
             stringPreferencesKey("web_service_url")
 
-        const val DEFAULT_URL =
-            "https://testapps.aquilasoftware.com/ams/webservice/"
+        const val DEFAULT_URL = ""
     }
 
     val webServiceUrl: Flow<String> =

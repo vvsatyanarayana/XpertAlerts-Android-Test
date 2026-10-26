@@ -12,6 +12,8 @@ object RetrofitClient {
         "https://testapps.aquilasoftware.com/ams/webservice/"
 
     fun createApiService(configuredUrl: String): ApiService {
+
+
         var normalizedUrl = configuredUrl.trim().trimEnd('/')
 
         require(

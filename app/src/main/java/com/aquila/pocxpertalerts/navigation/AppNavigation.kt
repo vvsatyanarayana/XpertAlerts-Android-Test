@@ -1,3 +1,4 @@
+
 package com.aquila.pocxpertalerts.navigation
 
 import android.util.Log
@@ -5,12 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -20,29 +18,14 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-
-import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
+import androidx.compose.runtime.LaunchedEffect
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.data.model.AlertDto
-import com.aquila.pocxpertalerts.data.remote.RetrofitClient
-import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsCache
-import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsRepository
-import com.aquila.pocxpertalerts.data.repository.ArchivedDynamicAction
-import com.aquila.pocxpertalerts.data.repository.ArchivedSearchPreferences
-import com.aquila.pocxpertalerts.data.repository.ChangePasswordRepository
-import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
 import com.aquila.pocxpertalerts.domain.model.User
-
 import com.aquila.pocxpertalerts.ui.screens.AboutScreen
 import com.aquila.pocxpertalerts.ui.screens.AlertDetailScreen
-import com.aquila.pocxpertalerts.ui.screens.ApplicationOption
-import com.aquila.pocxpertalerts.ui.screens.ArchivedAlertDetailsScreen
-import com.aquila.pocxpertalerts.ui.screens.ArchivedAlertUi
 import com.aquila.pocxpertalerts.ui.screens.ArchivedAlertsScreen
-import com.aquila.pocxpertalerts.ui.screens.ChangePasswordScreen
 import com.aquila.pocxpertalerts.ui.screens.ForwardAlertDetailsScreen
-import com.aquila.pocxpertalerts.ui.screens.ForwardAlertEditDetails
-import com.aquila.pocxpertalerts.ui.screens.ForwardAlertItem
 import com.aquila.pocxpertalerts.ui.screens.ForwardAlertsScreen
 import com.aquila.pocxpertalerts.ui.screens.HomeScreen
 import com.aquila.pocxpertalerts.ui.screens.LoginScreen
@@ -55,34 +38,48 @@ import com.aquila.pocxpertalerts.ui.screens.SearchSubscriptionScreen
 import com.aquila.pocxpertalerts.ui.screens.SettingsScreen
 import com.aquila.pocxpertalerts.ui.screens.SubscriptionDetailsScreen
 import com.aquila.pocxpertalerts.ui.screens.SubscriptionsScreen
-
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModelFactory
+import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
+import com.aquila.pocxpertalerts.data.remote.RetrofitClient
+import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
+import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsRepository
 import com.aquila.pocxpertalerts.viewmodel.ArchivedAlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.ArchivedAlertsViewModelFactory
-import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModel
-import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModelFactory
-import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModelFactory
+import androidx.compose.runtime.collectAsState
+import com.aquila.pocxpertalerts.ui.screens.ApplicationOption
+import com.aquila.pocxpertalerts.ui.screens.ArchivedAlertDetailsScreen
+import com.aquila.pocxpertalerts.ui.screens.ArchivedAlertUi
+import com.aquila.pocxpertalerts.ui.screens.ChangePasswordScreen
+import com.aquila.pocxpertalerts.ui.screens.ForwardAlertItem
+import com.aquila.pocxpertalerts.ui.screens.ForwardAlertEditDetails
+import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModel
+import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsCache
+import com.aquila.pocxpertalerts.data.repository.ArchivedSearchPreferences
 
+import androidx.compose.runtime.rememberCoroutineScope
+
+import com.aquila.pocxpertalerts.data.repository.ArchivedDynamicAction
+import com.aquila.pocxpertalerts.data.repository.ChangePasswordRepository
+import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModel
+import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModelFactory
 // ============================================================
 // SCREEN ROUTES
 // ============================================================
 
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
-    data object Settings : Screen("settings")
     data object Home : Screen("home")
-    data object Subscriptions : Screen("subscriptions")
-    data object ForwardAlerts : Screen("forward_alerts")
-    data object Archived : Screen("archived")
-    data object ChangePassword : Screen("change_password")
-    data object About : Screen("about")
-
+    data object Settings : Screen("settings")
     data object Notifications : Screen("notifications")
-    data object Profile : Screen("profile")
+    data object About : Screen("about")
+    data object Archived : Screen("archived")
+
     data object ArchivedAlertDetails : Screen("archived_alert_details")
+    data object Profile : Screen("profile")
+    data object ChangePassword : Screen("change_password")
 
     data object AlertDetail : Screen("alert_detail/{alertId}") {
         fun createRoute(alertId: String) = "alert_detail/$alertId"
@@ -90,6 +87,7 @@ sealed class Screen(val route: String) {
 
     data object SearchAlerts : Screen("search_alerts")
     data object SearchArchivedAlerts : Screen("search_archived_alerts")
+    data object Subscriptions : Screen("subscriptions")
 
     data object SubscriptionDetails :
         Screen("subscription_details/{subscriptionId}") {
@@ -98,34 +96,25 @@ sealed class Screen(val route: String) {
     }
 
     data object SearchSubscription : Screen("search_subscription")
+    data object ForwardAlerts : Screen("forward_alerts")
     data object ForwardAlertDetails : Screen("forward_alert_details")
     data object SearchForwardAlerts : Screen("search_forward_alerts")
 }
 
 // ============================================================
-// FORWARD ALERT SEARCH FILTERS
+// APP NAVIGATION
 // ============================================================
-
 data class ForwardSearchCriteria(
     val applicationId: String = "0",
     val userName: String = "",
     val email: String = "",
     val active: Int = 1
 )
-
-// ============================================================
-// APP NAVIGATION
-// ============================================================
-
 @Composable
 fun AppNavigation() {
-
     val navController = rememberNavController()
-    val appContext = LocalContext.current.applicationContext
 
-    // --------------------------------------------------------
-    // ARCHIVED ALERTS: SHARED REPOSITORY, CACHE AND VIEWMODEL
-    // --------------------------------------------------------
+    val appContext = LocalContext.current.applicationContext
 
     val archivedSearchPreferences = remember(appContext) {
         ArchivedSearchPreferences(appContext)
@@ -135,6 +124,7 @@ fun AppNavigation() {
         ArchivedAlertsCache(appContext)
     }
 
+    // Shared by the archived list and search destinations so results remain available after searching.
     val archivedRepository = remember {
         ArchivedAlertsRepository(RetrofitClient.apiService)
     }
@@ -148,31 +138,22 @@ fun AppNavigation() {
 
     val archivedViewModel: ArchivedAlertsViewModel =
         viewModel(factory = archivedFactory)
-
     val archivedAlerts by archivedViewModel.alerts.collectAsState()
     val archivedLoading by archivedViewModel.isLoading.collectAsState()
     val archivedError by archivedViewModel.errorMessage.collectAsState()
-
-    // --------------------------------------------------------
-    // SEARCHED ALERTS PERSISTENCE
-    // --------------------------------------------------------
 
     val searchPersistence = remember(appContext) {
         SearchAlertsPersistence(appContext)
     }
 
-    // --------------------------------------------------------
-    // SHARED APPLICATION STATE
-    // --------------------------------------------------------
-
     var loggedInUser by remember {
         mutableStateOf<User?>(null)
     }
 
+    // Forward Alerts is currently UI-only. API/ViewModel integration will be added later.
     val forwardViewModel: ForwardAlertsViewModel = viewModel()
+
     val forwardListState by forwardViewModel.listState.collectAsState()
-    val forwardFormState by forwardViewModel.formState.collectAsState()
-    val forwardCreateState by forwardViewModel.createState.collectAsState()
 
     var searchedAlerts by remember {
         mutableStateOf<List<AlertDto>>(emptyList())
@@ -185,6 +166,10 @@ fun AppNavigation() {
     var selectedForwardAlert by remember {
         mutableStateOf<ForwardAlertItem?>(null)
     }
+
+    val forwardFormState by forwardViewModel.formState.collectAsState()
+
+    val forwardCreateState by forwardViewModel.createState.collectAsState()
 
     var forwardSearchCriteria by remember {
         mutableStateOf(ForwardSearchCriteria())
@@ -212,10 +197,7 @@ fun AppNavigation() {
         mutableStateOf(false)
     }
 
-    // ========================================================
-    // NAVIGATION HOST
-    // Screen destinations are grouped in a readable order.
-    // ========================================================
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -223,16 +205,17 @@ fun AppNavigation() {
             startDestination = Screen.Login.route
         ) {
 
-            // =================================================
-            // 1. LOGIN
-            // =================================================
+            // ----------------------------------------------------
+            // LOGIN
+            // ----------------------------------------------------
 
             composable(Screen.Login.route) {
                 LoginScreen(
                     onLoginSuccess = { user ->
                         loggedInUser = user
 
-                        // Restore the current user's previous search.
+
+                        // Restore this user's last searched alerts.
                         searchedAlerts = searchPersistence.loadAlerts(
                             user.id.toString()
                         )
@@ -252,56 +235,14 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 2. SETTINGS
-            // =================================================
-
-            composable(Screen.Settings.route) {
-                SettingsScreen(
-                    onBackClick = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-
-            // =================================================
-            // 3. HOME
-            // =================================================
+            // ----------------------------------------------------
+            // HOME
+            // ----------------------------------------------------
 
             composable(Screen.Home.route) {
-
-                // Create the settings DataStore.
-                val context = LocalContext.current.applicationContext
-
-                val settingsDataStore = remember(context) {
-                    SettingsDataStore(context)
-                }
-
-                // Create the Alerts ViewModel factory.
-                val alertsFactory = remember(settingsDataStore) {
-                    AlertsViewModelFactory(settingsDataStore)
-                }
-
-                // Use the Home navigation entry as the ViewModel owner.
-                val homeBackStackEntry = remember(navController) {
-                    navController.getBackStackEntry(Screen.Home.route)
-                }
-
-                // Observe the same ViewModel used by Search Alerts.
-                val alertsViewModel: AlertsViewModel = viewModel(
-                    viewModelStoreOwner = homeBackStackEntry,
-                    factory = alertsFactory
-                )
-
-                // Observe whether the API request is running.
-                val isAlertsLoading by alertsViewModel.isLoading.collectAsState()
-
-                // Your existing HomeScreen starts here.
                 HomeScreen(
                     alerts = searchedAlerts,
-                    isLoading = isAlertsLoading,
 
-                    // Keep all your existing callbacks below.
                     onAlertClick = { alertId ->
                         val alert = searchedAlerts.firstOrNull {
                             it.alertId.toString() == alertId ||
@@ -364,7 +305,7 @@ fun AppNavigation() {
                         loggedInUser = null
                         selectedAlert = null
 
-                        // Keep locally saved search results intact.
+                        // Do not clear searchedAlerts or saved local data.
                         navController.navigate(Screen.Login.route) {
                             popUpTo(0) {
                                 inclusive = true
@@ -375,9 +316,9 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 4. ALERT DETAILS
-            // =================================================
+            // ----------------------------------------------------
+            // ALERT DETAILS
+            // ----------------------------------------------------
 
             composable(
                 route = Screen.AlertDetail.route,
@@ -387,7 +328,6 @@ fun AppNavigation() {
                     }
                 )
             ) { entry ->
-
                 val routeAlertId = entry.arguments
                     ?.getString("alertId")
                     .orEmpty()
@@ -414,9 +354,9 @@ fun AppNavigation() {
                 }
             }
 
-            // =================================================
-            // 5. NOTIFICATIONS
-            // =================================================
+            // ----------------------------------------------------
+            // NOTIFICATIONS
+            // ----------------------------------------------------
 
             composable(Screen.Notifications.route) {
                 NotificationsScreen(
@@ -426,35 +366,27 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 6. ARCHIVED ALERTS
-            // =================================================
+            // ----------------------------------------------------
+            // ARCHIVED
+            // ----------------------------------------------------
+
+            // ----------------------------------------------------
+// ARCHIVED ALERTS
+// ----------------------------------------------------
 
             composable(Screen.Archived.route) {
-
                 val user = loggedInUser
-
                 val archivedUiItems = archivedAlerts.map { item ->
                     val displayMessage = item.message
                         .replace("<br/><br/>", "\\n")
                         .replace("<br/>", "\\n")
-
                     ArchivedAlertUi(
-                        id = (
-                                item.archiveId.takeIf { it != 0L }
-                                    ?: item.alertId.toLong()
-                                ).toString(),
-                        title = item.groupBy.ifBlank {
-                            item.subject.ifBlank { "Archived Alert" }
-                        },
+                        id = (item.archiveId.takeIf { it != 0L } ?: item.alertId.toLong()).toString(),
+                        title = item.groupBy.ifBlank { item.subject.ifBlank { "Archived Alert" } },
                         date = item.alertSendDate,
                         subject = item.subject.ifBlank { item.groupBy },
                         description = displayMessage,
-                        currentStatus = if (item.errorCode == 412) {
-                            "Session expired"
-                        } else {
-                            "Archived"
-                        },
+                        currentStatus = if (item.errorCode == 412) "Session expired" else "Archived",
                         archiveId = item.archiveId,
                         alertId = item.alertId,
                         aggregateAlertId = item.aggregateAlertId,
@@ -479,32 +411,20 @@ fun AppNavigation() {
                     alerts = archivedUiItems,
                     isLoading = archivedLoading,
                     errorMessage = archivedError,
-                    onRetryClick = {
-                        archivedViewModel.refresh()
-                    },
-                    onRefreshClick = {
-                        archivedViewModel.refresh()
-                    },
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
-                    onSearchClick = {
-                        navController.navigate(
-                            Screen.SearchArchivedAlerts.route
-                        )
-                    },
+                    onRetryClick = { archivedViewModel.refresh() },
+                    onRefreshClick = { archivedViewModel.refresh() },
+                    onBackClick = { navController.popBackStack() },
+                    onSearchClick = { navController.navigate(Screen.SearchArchivedAlerts.route) },
                     onAlertClick = { alert ->
                         selectedArchivedAlert = alert
-                        navController.navigate(
-                            Screen.ArchivedAlertDetails.route
-                        )
+                        navController.navigate(Screen.ArchivedAlertDetails.route)
                     }
                 )
             }
 
-            // =================================================
-            // 7. ARCHIVED ALERT DETAILS
-            // =================================================
+// ----------------------------------------------------
+// ARCHIVED ALERT DETAILS
+// ----------------------------------------------------
 
             composable(Screen.ArchivedAlertDetails.route) {
                 val alert = selectedArchivedAlert
@@ -522,9 +442,11 @@ fun AppNavigation() {
                     }
                 }
             }
-            // =================================================
-            // 8. PROFILE
-            // =================================================
+
+
+            // ----------------------------------------------------
+            // PROFILE
+            // ----------------------------------------------------
 
             composable(Screen.Profile.route) {
                 ProfileScreen(
@@ -534,9 +456,9 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 9. CHANGE PASSWORD
-            // =================================================
+            // ============================================================
+            // Change password
+            // ============================================================
 
             composable(Screen.ChangePassword.route) {
                 val user = loggedInUser
@@ -547,12 +469,11 @@ fun AppNavigation() {
                     )
                 }
 
-                val changePasswordFactory =
-                    remember(changePasswordRepository) {
-                        ChangePasswordViewModelFactory(
-                            changePasswordRepository
-                        )
-                    }
+                val changePasswordFactory = remember(changePasswordRepository) {
+                    ChangePasswordViewModelFactory(
+                        changePasswordRepository
+                    )
+                }
 
                 val changePasswordViewModel: ChangePasswordViewModel =
                     viewModel(factory = changePasswordFactory)
@@ -584,9 +505,22 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 10. ABOUT
-            // =================================================
+
+            // ----------------------------------------------------
+            // SETTINGS
+            // ----------------------------------------------------
+
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            // ----------------------------------------------------
+            // ABOUT
+            // ----------------------------------------------------
 
             composable(Screen.About.route) {
                 AboutScreen(
@@ -596,14 +530,9 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 11. SEARCH ALERTS
-            //
-            // The ViewModel is owned by Home's back-stack entry.
-            // After Search is tapped, Home appears immediately,
-            // while the API request continues in the shared
-            // ViewModel. Results update Home when the API succeeds.
-            // =================================================
+            // ----------------------------------------------------
+            // SEARCH ALERTS
+            // ----------------------------------------------------
 
             composable(Screen.SearchAlerts.route) {
                 val user = loggedInUser
@@ -617,15 +546,10 @@ fun AppNavigation() {
                     AlertsViewModelFactory(settingsDataStore)
                 }
 
-                val homeBackStackEntry = remember(navController) {
-                    navController.getBackStackEntry(Screen.Home.route)
-                }
-
                 val alertsViewModel: AlertsViewModel = viewModel(
-                    viewModelStoreOwner = homeBackStackEntry,
                     factory = alertsFactory
                 )
-                val isAlertsLoading by alertsViewModel.isLoading.collectAsState()
+
                 SearchAlertsScreen(
                     alertsViewModel = alertsViewModel,
                     userId = user?.id?.toString().orEmpty(),
@@ -636,7 +560,6 @@ fun AppNavigation() {
                         navController.popBackStack()
                     },
 
-                    // Alerts tab returns to Home.
                     onAlertsTabClick = {
                         navController.popBackStack(
                             route = Screen.Home.route,
@@ -644,7 +567,6 @@ fun AppNavigation() {
                         )
                     },
 
-                    // Subscriptions tab.
                     onSubscriptionsTabClick = {
                         navController.navigate(Screen.Subscriptions.route) {
                             popUpTo(Screen.Home.route) {
@@ -654,7 +576,6 @@ fun AppNavigation() {
                         }
                     },
 
-                    // Forward Alerts tab.
                     onForwardAlertsTabClick = {
                         navController.navigate(Screen.ForwardAlerts.route) {
                             popUpTo(Screen.Home.route) {
@@ -664,7 +585,6 @@ fun AppNavigation() {
                         }
                     },
 
-                    // Menu returns to Home.
                     onMenuTabClick = {
                         navController.popBackStack(
                             route = Screen.Home.route,
@@ -672,14 +592,12 @@ fun AppNavigation() {
                         )
                     },
 
-                    // Search and return to Home immediately.
-                    onSearchClick = {
-                            startDate,
-                            endDate,
-                            keyword,
-                            viewBy,
-                            application,
-                            alertDefinition ->
+                    onSearchClick = { startDate,
+                                      endDate,
+                                      keyword,
+                                      viewBy,
+                                      application,
+                                      alertDefinition ->
 
                         if (user == null) {
                             Log.e(
@@ -687,13 +605,6 @@ fun AppNavigation() {
                                 "No logged-in user is available"
                             )
                         } else {
-                            // Step 1: Return to Home.
-                            navController.popBackStack(
-                                route = Screen.Home.route,
-                                inclusive = false
-                            )
-
-                            // Step 2: Request the filtered alerts.
                             alertsViewModel.searchAlerts(
                                 userId = user.id.toString(),
                                 startDate = startDate,
@@ -704,11 +615,10 @@ fun AppNavigation() {
                                 alertDefinitionId = alertDefinition,
                                 sessionId = user.sessionId.orEmpty(),
 
-                                // Step 3: Update Home after success.
                                 onSuccess = { results ->
                                     searchedAlerts = results
 
-                                    // Save results for this user.
+                                    // Persist the successful search results for this user.
                                     searchPersistence.saveAlerts(
                                         userId = user.id.toString(),
                                         alerts = results
@@ -727,6 +637,12 @@ fun AppNavigation() {
                                                     "subject=${alert.subject}"
                                         )
                                     }
+
+                                    navController.popBackStack(
+                                        route = Screen.Home.route,
+                                        inclusive = false,
+                                        saveState = true
+                                    )
                                 }
                             )
                         }
@@ -734,10 +650,9 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 12. SEARCH ARCHIVED ALERTS
-            // =================================================
-
+            // ----------------------------------------------------
+// SEARCH ARCHIVED ALERTS
+// ----------------------------------------------------
             composable(Screen.SearchArchivedAlerts.route) {
                 val user = loggedInUser
 
@@ -745,33 +660,29 @@ fun AppNavigation() {
                     onBackClick = {
                         navController.popBackStack()
                     },
-
                     onSearchClick = { criteria ->
                         if (user != null) {
                             // Save the filters selected by the user.
                             archivedSearchPreferences.save(criteria)
 
-                            // Load archived alerts using those filters.
+                            // Load the matching cached results, then refresh from the API.
                             archivedViewModel.load(
                                 userId = user.id.toString(),
                                 sessionId = user.sessionId.orEmpty(),
                                 criteria = criteria
                             )
 
-                            // Return to Archived Alerts.
                             navController.popBackStack()
                         }
                     },
-
                     onResetClick = {
                         // Reset is handled inside SearchArchivedAlertsScreen.
                     }
                 )
             }
-
-            // =================================================
-            // 13. SUBSCRIPTIONS
-            // =================================================
+            // ----------------------------------------------------
+            // SUBSCRIPTIONS
+            // ----------------------------------------------------
 
             composable(Screen.Subscriptions.route) {
                 val user = loggedInUser
@@ -782,29 +693,30 @@ fun AppNavigation() {
                     )
                 }
 
-                val subscriptionFactory =
-                    remember(subscriptionRepository) {
-                        SubscriptionsViewModelFactory(
-                            subscriptionRepository
-                        )
-                    }
+                val subscriptionFactory = remember(subscriptionRepository) {
+                    SubscriptionsViewModelFactory(
+                        subscriptionRepository
+                    )
+                }
 
-                val subscriptionViewModel: SubscriptionsViewModel =
-                    viewModel(factory = subscriptionFactory)
+                val subscriptionViewModel: SubscriptionsViewModel = viewModel(
+                    factory = subscriptionFactory
+                )
+
+
 
                 SubscriptionsScreen(
                     onBackClick = {
                         navController.popBackStack()
                     },
-
                     onCreateClick = {
                         navController.navigate(
                             Screen.SubscriptionDetails.createRoute("new")
                         )
                     },
-
                     onEditClick = { subscriptionId ->
-                        Log.d(
+
+                        android.util.Log.d(
                             "SubscriptionNavigation",
                             "Opening subscription details for ID: $subscriptionId"
                         )
@@ -817,22 +729,20 @@ fun AppNavigation() {
                             launchSingleTop = true
                         }
                     },
-
                     onSearchClick = {
                         navController.navigate(
                             Screen.SearchSubscription.route
                         )
                     },
-
                     viewModel = subscriptionViewModel,
                     userId = user?.id?.toString().orEmpty(),
                     sessionId = user?.sessionId.orEmpty()
                 )
             }
 
-            // =================================================
-            // 14. SUBSCRIPTION DETAILS
-            // =================================================
+            // ----------------------------------------------------
+            // SUBSCRIPTION DETAILS
+            // ----------------------------------------------------
 
             composable(
                 route = Screen.SubscriptionDetails.route,
@@ -849,17 +759,16 @@ fun AppNavigation() {
 
                 val user = loggedInUser
 
-                // Reuse the ViewModel belonging to Subscriptions.
+                // Reuse the ViewModel owned by the subscriptions screen.
                 val subscriptionsEntry = remember(navController) {
                     navController.getBackStackEntry(
                         Screen.Subscriptions.route
                     )
                 }
 
-                val subscriptionViewModel: SubscriptionsViewModel =
-                    viewModel(
-                        viewModelStoreOwner = subscriptionsEntry
-                    )
+                val subscriptionViewModel: SubscriptionsViewModel = viewModel(
+                    viewModelStoreOwner = subscriptionsEntry
+                )
 
                 SubscriptionDetailsScreen(
                     subscriptionId = subscriptionId,
@@ -867,16 +776,15 @@ fun AppNavigation() {
                     userId = user?.id?.toString().orEmpty(),
                     userTypeId = user?.userTypeId?.toString().orEmpty(),
                     sessionId = user?.sessionId.orEmpty(),
-
                     onBackClick = {
                         navController.popBackStack()
                     },
 
                     onSaveSuccess = {
-                        // Clear any previous save message.
+                        // Clear the previous save-success message first.
                         subscriptionViewModel.clearMessages()
 
-                        // Refresh the list after a successful save.
+                        // Refresh the subscriptions list after saving.
                         subscriptionViewModel.loadSubscriptions(
                             userId = user?.id?.toString().orEmpty(),
                             sessionId = user?.sessionId.orEmpty(),
@@ -885,14 +793,17 @@ fun AppNavigation() {
                             searchActive = 2
                         )
 
+                        // Return to the subscriptions list.
                         navController.popBackStack()
                     }
+
                 )
             }
 
-            // =================================================
-            // 15. SEARCH SUBSCRIPTIONS
-            // =================================================
+
+/// ----------------------------------------------------
+// SEARCH SUBSCRIPTIONS
+// ----------------------------------------------------
 
             composable(Screen.SearchSubscription.route) {
 
@@ -902,7 +813,7 @@ fun AppNavigation() {
                     )
                 }
 
-                // Share the Subscriptions ViewModel with search.
+                // Reuse the ViewModel from My Subscriptions.
                 val subscriptionViewModel: SubscriptionsViewModel =
                     viewModel(
                         viewModelStoreOwner = subscriptionsEntry
@@ -926,10 +837,9 @@ fun AppNavigation() {
 
                 val userId = loggedInUser?.id?.toString().orEmpty()
                 val sessionId = loggedInUser?.sessionId.orEmpty()
-                val userTypeId =
-                    loggedInUser?.userTypeId?.toString().orEmpty()
+                val userTypeId = loggedInUser?.userTypeId?.toString().orEmpty()
 
-                // Load application choices from the API.
+                // Load applications from the real API.
                 LaunchedEffect(
                     userId,
                     sessionId,
@@ -959,18 +869,18 @@ fun AppNavigation() {
                                 sessionId = sessionId
                             )
 
-                        Log.d(
+                        android.util.Log.d(
                             "SubscriptionSearch",
                             "getApplicationList response: $response"
                         )
 
-                        val parsedApplications =
-                            mutableListOf<ApplicationOption>()
+                        val parsedApplications = mutableListOf<ApplicationOption>()
 
                         if (response.isJsonArray) {
                             response.asJsonArray.forEach { item ->
                                 if (item.isJsonObject) {
                                     val obj = item.asJsonObject
+
                                     val idElement = obj.get("id")
                                     val nameElement = obj.get("name")
 
@@ -1013,7 +923,7 @@ fun AppNavigation() {
                                     "The server returned no application records."
                             }
 
-                            Log.d(
+                            android.util.Log.d(
                                 "SubscriptionSearch",
                                 "Parsed applications: $applicationOptions"
                             )
@@ -1027,7 +937,7 @@ fun AppNavigation() {
                         applicationsError =
                             e.message ?: "Unable to load applications."
 
-                        Log.e(
+                        android.util.Log.e(
                             "SubscriptionSearch",
                             "Failed to load applications",
                             e
@@ -1042,12 +952,10 @@ fun AppNavigation() {
                         navController.popBackStack()
                     },
 
-                    onSearchClick = {
-                            alertName,
-                            applicationId,
-                            searchActive ->
 
-                        Log.d(
+                    onSearchClick = { alertName, applicationId, searchActive ->
+
+                        android.util.Log.d(
                             "SubscriptionSearch",
                             "Search filters: name=$alertName, " +
                                     "applicationId=$applicationId, " +
@@ -1065,6 +973,7 @@ fun AppNavigation() {
                         navController.popBackStack()
                     },
 
+
                     applications = applicationOptions,
                     isApplicationsLoading = isApplicationsLoading,
                     applicationsError = applicationsError,
@@ -1074,15 +983,13 @@ fun AppNavigation() {
                     }
                 )
             }
-            // =================================================
-            // 16. FORWARD ALERTS
-            // =================================================
+            // ============================================================
+            // FORWARD ALERTS LIST — UI ONLY
+            // ============================================================
 
             composable(Screen.ForwardAlerts.route) {
                 val user = loggedInUser
 
-                // Load the forward-alert list whenever the user or
-                // the selected search criteria change.
                 LaunchedEffect(
                     user?.id,
                     user?.userTypeId,
@@ -1144,9 +1051,7 @@ fun AppNavigation() {
                     },
 
                     onSetAllStatus = { active ->
-                        forwardViewModel.updateAllForwardAlertsStatus(
-                            active
-                        )
+                        forwardViewModel.updateAllForwardAlertsStatus(active)
                     },
 
                     onDeleteClick = { alert ->
@@ -1155,14 +1060,14 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 17. CREATE / EDIT FORWARD ALERT
-            // =================================================
+            // ============================================================
+            // FORWARD ALERT DETAILS — UI ONLY
+            // ============================================================
+
 
             composable(Screen.ForwardAlertDetails.route) {
                 val user = loggedInUser
 
-                // Load applications for the signed-in user.
                 LaunchedEffect(
                     user?.id,
                     user?.userTypeId,
@@ -1181,24 +1086,20 @@ fun AppNavigation() {
                     onBackClick = {
                         navController.popBackStack()
                     },
-
                     onSaveClick = {},
-
                     applications = forwardFormState.applications.map { application ->
                         com.aquila.pocxpertalerts.ui.screens.ForwardApplicationOption(
                             id = application.id,
                             name = application.name
                         )
                     },
-
-                    users = forwardFormState.users.map { forwardUser ->
+                    users = forwardFormState.users.map { user ->
                         com.aquila.pocxpertalerts.ui.screens.ForwardUserOption(
-                            id = forwardUser.id,
-                            name = forwardUser.name,
-                            email = forwardUser.email
+                            id = user.id,
+                            name = user.name,
+                            email = user.email
                         )
                     },
-
                     emailFromApi = forwardCreateState.email,
 
                     onUserSelected = { selectedUser ->
@@ -1206,13 +1107,12 @@ fun AppNavigation() {
                             selectedUser.id
                         )
                     },
-
-                    isSaving = forwardCreateState.isSaving,
-                    saveMessage = forwardCreateState.message,
-                    saveSucceeded = forwardCreateState.isSuccess,
-
+                    isSaving = forwardViewModel.createState.collectAsState().value.isSaving,
+                    saveMessage = forwardViewModel.createState.collectAsState().value.message,
+                    saveSucceeded = forwardViewModel.createState.collectAsState().value.isSuccess,
                     editDetails = selectedForwardAlert?.let { alert ->
                         ForwardAlertEditDetails(
+
                             forwardAlertId = alert.id,
                             mappedUserId = alert.mappedUserId,
                             applicationId = alert.applicationId,
@@ -1221,18 +1121,16 @@ fun AppNavigation() {
                             active = alert.active
                         )
                     },
-
                     onApplicationSelected = { application ->
                         forwardViewModel.loadUsers(application.id)
                     },
 
-                    onMapClick = {
-                            applicationId,
-                            mappedUserId,
-                            email,
-                            sortOrder,
-                            active ->
 
+                    onMapClick = { applicationId,
+                                   mappedUserId,
+                                   email,
+                                   sortOrder,
+                                   active ->
                         forwardViewModel.createForwardAlert(
                             applicationId = applicationId,
                             mappedUserId = mappedUserId,
@@ -1245,14 +1143,14 @@ fun AppNavigation() {
                 )
             }
 
-            // =================================================
-            // 18. SEARCH FORWARD ALERTS
-            // =================================================
+
+            // ============================================================
+            // SEARCH FORWARD ALERTS — UI ONLY
+            // ============================================================
 
             composable(Screen.SearchForwardAlerts.route) {
                 val user = loggedInUser
 
-                // Load applications and users for the search filters.
                 LaunchedEffect(
                     user?.id,
                     user?.userTypeId,
@@ -1274,17 +1172,10 @@ fun AppNavigation() {
                         navController.popBackStack()
                     },
 
-                    onSearchClick = {
-                            applicationId,
-                            userName,
-                            email,
-                            active ->
+                    onSearchClick = { applicationId, userName, email, active ->
 
-                        val selectedAppId =
-                            applicationId.ifBlank { "0" }
+                        val selectedAppId = applicationId.ifBlank { "0" }
 
-                        // Save the filters. Returning to the list
-                        // triggers its LaunchedEffect and reloads data.
                         forwardSearchCriteria = ForwardSearchCriteria(
                             applicationId = selectedAppId,
                             userName = userName,
@@ -1292,15 +1183,16 @@ fun AppNavigation() {
                             active = active
                         )
 
+
+
+                        // Return to the existing list screen.
                         navController.popBackStack()
                     },
 
                     applications = forwardFormState.applications,
                     users = forwardFormState.users,
-                    isLoadingApplications =
-                        forwardFormState.isLoadingApplications,
-                    isLoadingUsers =
-                        forwardFormState.isLoadingUsers,
+                    isLoadingApplications = forwardFormState.isLoadingApplications,
+                    isLoadingUsers = forwardFormState.isLoadingUsers,
 
                     onApplicationSelected = { application ->
                         forwardViewModel.loadUsers(
@@ -1313,6 +1205,7 @@ fun AppNavigation() {
                     }
                 )
             }
-        } // End NavHost
-    } // End Box
-} // End AppNavigation
+        }
+    }
+
+}

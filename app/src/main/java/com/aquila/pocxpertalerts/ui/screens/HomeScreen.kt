@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -99,9 +98,7 @@ fun HomeScreen(
     onPasswordClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onAboutClick: () -> Unit,
-    alerts: List<AlertDto> = emptyList(),
-    isLoading: Boolean = false,
-
+    alerts: List<AlertDto> = emptyList()
 ) {
     var showBottomMenu by rememberSaveable { mutableStateOf(false) }
     var showTopMenu by remember { mutableStateOf(false) }
@@ -245,16 +242,6 @@ fun HomeScreen(
                     },
                     onSearchClick = onSearchClick
                 )
-                // Show the spinner on Home while the API is searching.
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(42.dp),
-                        color = XpertOrange,
-                        strokeWidth = 4.dp
-                    )
-                }
             }
 
             // BOTTOM MENU PANEL
