@@ -2,20 +2,19 @@
 package com.aquila.pocxpertalerts.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,17 +24,14 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,11 +44,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
+import com.aquila.pocxpertalerts.ui.theme.AppBackground
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+import com.aquila.pocxpertalerts.ui.theme.TextGray
+import com.aquila.pocxpertalerts.ui.theme.White
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 
-private val CreateForwardOrange = Color(0xFFED741C)
-private val ApplicationPurple = Color(0xFF673AB7)
-private val DropdownBackground = Color(0xFFF3EDF7)
-private val DropdownTextColor = Color(0xFF29252F)
+private val ForwardDetailsGreen = Color(0xFF008F54)
+private val ForwardDetailsBorder = Color(0xFFB8B8B8)
 
 data class ForwardApplicationOption(
     val id: String,
@@ -113,7 +113,7 @@ fun ForwardAlertDetailsScreen(
     var userSearch by remember { mutableStateOf("") }
     var showValidation by remember { mutableStateOf(false) }
 
-    // Restore values when editing an existing mapping.
+    // Restore existing mapping values when editing.
     LaunchedEffect(editDetails, applications) {
         val details = editDetails
 
@@ -150,7 +150,7 @@ fun ForwardAlertDetailsScreen(
         }
     }
 
-    // Accept only valid email values from the API.
+    // Auto-populate only a valid email address received from the API.
     LaunchedEffect(emailFromApi) {
         val apiEmail = emailFromApi?.trim().orEmpty()
 
@@ -166,141 +166,87 @@ fun ForwardAlertDetailsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = if (editDetails != null) {
-                            "Edit Forward Alert"
-                        } else {
-                            "Create Forward Alert"
-                        },
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+            AppTopBar(
+                title = if (editDetails != null) {
+                    "Edit Forward Alert"
+                } else {
+                    "Create Forward Alert"
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        enabled = !isSaving
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CreateForwardOrange
-                )
+                onBackClick = onBackClick
             )
         }
-    ) { padding ->
+    ) { innerPadding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(innerPadding)
+                .background(White)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // APPLICATION
             Text(
-                text = "Application",
-                fontWeight = FontWeight.Medium
+                text = if (editDetails != null) {
+                    "Edit Forward Alert"
+                } else {
+                    "Create Forward Alert"
+                },
+                color = TextDark,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
             )
 
-            ExposedDropdownMenuBox(
+            Text(
+                text = "Choose the application and user to configure alert forwarding.",
+                color = TextGray,
+                fontSize = 13.sp,
+                lineHeight = 19.sp
+            )
+
+            Divider(
+                color = ForwardDetailsBorder.copy(alpha = 0.4f),
+                thickness = 1.dp
+            )
+
+            // APPLICATION
+            ForwardFieldLabel("Application")
+
+            ForwardDetailsDropdown(
+                value = selectedApplication?.name.orEmpty(),
+                placeholder = "Select Application",
                 expanded = applicationMenuOpen,
-                onExpandedChange = { expanded ->
-                    if (!isSaving) {
-                        applicationMenuOpen = expanded
-                    }
+                enabled = !isSaving,
+                onExpandedChange = {
+                    applicationMenuOpen = it
                 },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedApplication?.name.orEmpty(),
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = !isSaving,
-                    label = {
-                        Text("Application")
-                    },
-                    placeholder = {
-                        Text("Select Application")
-                    },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = applicationMenuOpen
-                        )
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(50.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ApplicationPurple,
-                        unfocusedBorderColor = Color(0xFF999999),
-                        focusedLabelColor = ApplicationPurple,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White
-                    )
-                )
+                options = applications,
+                optionLabel = { it.name },
+                emptyMessage = "No applications available",
+                onSelected = { application ->
+                    selectedApplication = application
+                    selectedUser = null
+                    email = ""
+                    userSearch = ""
+                    sortOrder = "0"
+                    showValidation = false
+                    applicationMenuOpen = false
+                    userMenuOpen = false
 
-                ExposedDropdownMenu(
-                    expanded = applicationMenuOpen,
-                    onDismissRequest = {
-                        applicationMenuOpen = false
-                    },
-                    modifier = Modifier.background(DropdownBackground)
-                ) {
-                    if (applications.isEmpty()) {
-                        DropdownMenuItem(
-                            text = {
-                                Text("No applications available")
-                            },
-                            onClick = {
-                                applicationMenuOpen = false
-                            }
-                        )
-                    } else {
-                        applications.forEach { application ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = application.name,
-                                        color = DropdownTextColor
-                                    )
-                                },
-                                onClick = {
-                                    selectedApplication = application
-                                    selectedUser = null
-                                    email = ""
-                                    userSearch = ""
-                                    sortOrder = "0"
-                                    showValidation = false
-                                    applicationMenuOpen = false
-                                    userMenuOpen = false
-
-                                    onApplicationSelected(application)
-                                }
-                            )
-                        }
-                    }
+                    onApplicationSelected(application)
                 }
-            }
+            )
 
             // USER
-            Text(
-                text = "User",
-                fontWeight = FontWeight.Medium
-            )
+            ForwardFieldLabel("User")
 
             ExposedDropdownMenuBox(
                 expanded = userMenuOpen,
@@ -317,11 +263,12 @@ fun ForwardAlertDetailsScreen(
                     onValueChange = {},
                     readOnly = true,
                     enabled = !isSaving,
-                    label = {
-                        Text("User")
-                    },
                     placeholder = {
-                        Text("Select User")
+                        Text(
+                            text = "Select User",
+                            color = TextGray,
+                            fontSize = 14.sp
+                        )
                     },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(
@@ -330,17 +277,11 @@ fun ForwardAlertDetailsScreen(
                     },
                     modifier = Modifier
                         .menuAnchor()
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .height(56.dp),
                     singleLine = true,
-                    shape = RoundedCornerShape(50.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ApplicationPurple,
-                        unfocusedBorderColor = Color(0xFF999999),
-                        focusedLabelColor = ApplicationPurple,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White
-                    )
+                    shape = RoundedCornerShape(14.dp),
+                    colors = forwardFieldColors()
                 )
 
                 ExposedDropdownMenu(
@@ -349,22 +290,28 @@ fun ForwardAlertDetailsScreen(
                         userMenuOpen = false
                         userSearch = ""
                     },
-                    modifier = Modifier.background(DropdownBackground)
+                    modifier = Modifier
+                        .background(White)
+                        .height(300.dp)
                 ) {
-                    // Search field inside the dropdown.
                     OutlinedTextField(
                         value = userSearch,
                         onValueChange = {
                             userSearch = it
                         },
                         placeholder = {
-                            Text("Search user")
+                            Text(
+                                text = "Search users",
+                                color = TextGray,
+                                fontSize = 14.sp
+                            )
                         },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(8.dp),
-                        shape = RoundedCornerShape(50.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = forwardFieldColors()
                     )
 
                     val filteredUsers = users.filter { user ->
@@ -381,11 +328,12 @@ fun ForwardAlertDetailsScreen(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    if (users.isEmpty()) {
+                                    text = if (users.isEmpty()) {
                                         "No users available"
                                     } else {
                                         "No matching users"
-                                    }
+                                    },
+                                    color = TextGray
                                 )
                             },
                             onClick = {
@@ -400,13 +348,19 @@ fun ForwardAlertDetailsScreen(
                                     Column {
                                         Text(
                                             text = user.name,
-                                            color = DropdownTextColor,
-                                            fontWeight = FontWeight.Medium
+                                            color = TextDark,
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 14.sp
                                         )
+
+                                        Spacer(
+                                            modifier = Modifier.height(3.dp)
+                                        )
+
                                         Text(
                                             text = user.email,
                                             fontSize = 12.sp,
-                                            color = Color.Gray
+                                            color = TextGray
                                         )
                                     }
                                 },
@@ -432,10 +386,7 @@ fun ForwardAlertDetailsScreen(
             }
 
             // EMAIL ADDRESS
-            Text(
-                text = "Email Address",
-                fontWeight = FontWeight.Medium
-            )
+            ForwardFieldLabel("Email Address")
 
             OutlinedTextField(
                 value = email,
@@ -445,18 +396,22 @@ fun ForwardAlertDetailsScreen(
                 },
                 enabled = !isSaving,
                 placeholder = {
-                    Text("Email Address")
+                    Text(
+                        text = "Enter email address",
+                        color = TextGray,
+                        fontSize = 14.sp
+                    )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 singleLine = true,
-                shape = RoundedCornerShape(50.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = forwardFieldColors()
             )
 
             // SORT ORDER
-            Text(
-                text = "Sort Order",
-                fontWeight = FontWeight.Medium
-            )
+            ForwardFieldLabel("Sort Order")
 
             OutlinedTextField(
                 value = sortOrder,
@@ -466,20 +421,37 @@ fun ForwardAlertDetailsScreen(
                         value.all { it.isDigit() }
                     ) {
                         sortOrder = value
+                        showValidation = false
                     }
                 },
                 enabled = !isSaving,
                 placeholder = {
-                    Text("Sort Order")
+                    Text(
+                        text = "Enter sort order",
+                        color = TextGray,
+                        fontSize = 14.sp
+                    )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 singleLine = true,
-                shape = RoundedCornerShape(50.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = forwardFieldColors()
             )
 
             // ACTIVATE
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = AppBackground,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 10.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(
@@ -487,13 +459,15 @@ fun ForwardAlertDetailsScreen(
                 ) {
                     Text(
                         text = "Activate",
-                        fontWeight = FontWeight.Medium
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextDark
                     )
 
                     Text(
-                        text = if (active) "Yes" else "No",
+                        text = if (active) "Enabled" else "Disabled",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = TextGray
                     )
                 }
 
@@ -502,23 +476,24 @@ fun ForwardAlertDetailsScreen(
                     onCheckedChange = {
                         active = it
                     },
-                    enabled = !isSaving
+                    enabled = !isSaving,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = White,
+                        checkedTrackColor = ForwardDetailsGreen,
+                        checkedBorderColor = ForwardDetailsGreen
+                    )
                 )
             }
 
             // VALIDATION
             if (showValidation) {
                 Text(
-                    text = "Please select an application and user, " +
-                            "enter a valid email, and provide a sort order.",
+                    text = "Please select an application and user, enter a valid email, and provide a sort order.",
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp
                 )
             }
-
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
 
             // MAP BUTTON
             Button(
@@ -548,25 +523,39 @@ fun ForwardAlertDetailsScreen(
                     }
                 },
                 enabled = !isSaving,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CreateForwardOrange
+                    containerColor = XpertOrange,
+                    contentColor = White,
+                    disabledContainerColor = XpertOrange.copy(alpha = 0.5f),
+                    disabledContentColor = White
                 )
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(
-                        modifier = Modifier.height(18.dp),
+                        modifier = Modifier
+                            .height(20.dp)
+                            .width(20.dp),
                         strokeWidth = 2.dp,
-                        color = Color.White
+                        color = White
                     )
+
+                    Spacer(modifier = Modifier.width(10.dp))
 
                     Text(
                         text = "Saving...",
-                        modifier = Modifier.padding(start = 8.dp)
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 } else {
-                    Text("Map")
+                    Text(
+                        text = "Map",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
 
@@ -579,8 +568,125 @@ fun ForwardAlertDetailsScreen(
                     } else {
                         MaterialTheme.colorScheme.error
                     },
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ForwardFieldLabel(
+    text: String
+) {
+    Text(
+        text = text,
+        color = TextDark,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold
+    )
+}
+
+@Composable
+private fun forwardFieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = XpertOrange,
+        unfocusedBorderColor = ForwardDetailsBorder.copy(alpha = 0.75f),
+        disabledBorderColor = ForwardDetailsBorder.copy(alpha = 0.35f),
+        focusedTextColor = TextDark,
+        unfocusedTextColor = TextDark,
+        disabledTextColor = TextGray,
+        cursorColor = XpertOrange,
+        focusedContainerColor = White,
+        unfocusedContainerColor = White,
+        disabledContainerColor = AppBackground
+    )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> ForwardDetailsDropdown(
+    value: String,
+    placeholder: String,
+    expanded: Boolean,
+    enabled: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    emptyMessage: String,
+    onSelected: (T) -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = {
+            if (enabled) onExpandedChange(it)
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            enabled = enabled,
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    fontSize = 14.sp,
+                    color = TextGray
+                )
+            },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(
+                    expanded = expanded
+                )
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .height(56.dp),
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            colors = forwardFieldColors()
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                onExpandedChange(false)
+            },
+            modifier = Modifier.background(White)
+        ) {
+            if (options.isEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = emptyMessage,
+                            color = TextGray,
+                            fontSize = 14.sp
+                        )
+                    },
+                    onClick = {
+                        onExpandedChange(false)
+                    }
+                )
+            } else {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = optionLabel(option),
+                                color = TextDark,
+                                fontSize = 14.sp
+                            )
+                        },
+                        onClick = {
+                            onSelected(option)
+                            onExpandedChange(false)
+                        }
+                    )
+                }
             }
         }
     }

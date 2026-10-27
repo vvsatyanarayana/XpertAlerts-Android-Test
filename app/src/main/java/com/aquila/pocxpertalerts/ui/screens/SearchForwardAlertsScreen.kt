@@ -1,4 +1,3 @@
-
 package com.aquila.pocxpertalerts.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,17 +18,12 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,12 +34,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
+import com.aquila.pocxpertalerts.ui.components.SearchScreenTopBar
+import com.aquila.pocxpertalerts.ui.theme.PlaceholderColor
+import com.aquila.pocxpertalerts.ui.theme.SearchButtonColor
+import com.aquila.pocxpertalerts.ui.theme.SearchButtonTextColor
+import com.aquila.pocxpertalerts.ui.theme.SearchScreenBackground
+import com.aquila.pocxpertalerts.ui.theme.SearchTextColor
 import com.aquila.pocxpertalerts.viewmodel.ForwardApplicationOption
 import com.aquila.pocxpertalerts.viewmodel.ForwardUserOption
-
-private val SearchForwardOrange = Color(0xFFED741C)
-private val SearchForwardPurple = Color(0xFF673AB7)
-private val SearchForwardBorder = Color(0xFF999999)
+private val ForwardFieldBorder = Color(0xFFBDBDBD)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +65,7 @@ fun SearchForwardAlertsScreen(
     var selectedApplication by remember {
         mutableStateOf<ForwardApplicationOption?>(null)
     }
+
     var applicationMenuExpanded by remember {
         mutableStateOf(false)
     }
@@ -76,92 +73,78 @@ fun SearchForwardAlertsScreen(
     var selectedUser by remember {
         mutableStateOf<ForwardUserOption?>(null)
     }
+
     var userMenuExpanded by remember {
         mutableStateOf(false)
     }
 
-    var email by remember { mutableStateOf("") }
-    var selectedStatus by remember { mutableStateOf("Yes") }
+    var email by remember {
+        mutableStateOf("")
+    }
+
+    var selectedStatus by remember {
+        mutableStateOf("Yes")
+    }
 
     Scaffold(
+        containerColor = SearchScreenBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Search Forward Alerts",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            selectedApplication = null
-                            selectedUser = null
-                            email = ""
-                            selectedStatus = "Yes"
-                            applicationMenuExpanded = false
-                            userMenuExpanded = false
-                            onApplicationSelected(null)
-                            onResetClick()
-                        }
-                    ) {
-                        Text(
-                            text = "Reset",
-                            color = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SearchForwardOrange
-                )
+            SearchScreenTopBar(
+                title = "Search Forward Alerts",
+                onBackClick = onBackClick,
+                onResetClick = {
+                    selectedApplication = null
+                    selectedUser = null
+                    email = ""
+                    selectedStatus = "Yes"
+                    applicationMenuExpanded = false
+                    userMenuExpanded = false
+
+                    onApplicationSelected(null)
+                    onResetClick()
+                }
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
 
             // Application dropdown
             ExposedDropdownMenuBox(
                 expanded = applicationMenuExpanded,
                 onExpandedChange = {
-                    applicationMenuExpanded = !applicationMenuExpanded
-                }
+                    applicationMenuExpanded = it
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedTextField(
                     value = selectedApplication?.name.orEmpty(),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Application") },
-                    placeholder = { Text("Select Application") },
+                    singleLine = true,
+                    label = {
+                        Text("Application")
+                    },
+                    placeholder = {
+                        Text(
+                            text = "Select Application",
+                            color = PlaceholderColor
+                        )
+                    },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(
                             expanded = applicationMenuExpanded
                         )
                     },
-                    shape = RoundedCornerShape(50),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = SearchForwardPurple,
-                        unfocusedBorderColor = SearchForwardBorder,
-                        focusedLabelColor = SearchForwardPurple,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
-                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = searchFieldColors(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor()
@@ -174,22 +157,28 @@ fun SearchForwardAlertsScreen(
                     }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("All Applications") },
+                        text = {
+                            Text("All Applications")
+                        },
                         onClick = {
                             selectedApplication = null
                             selectedUser = null
                             applicationMenuExpanded = false
+
                             onApplicationSelected(null)
                         }
                     )
 
                     applications.forEach { application ->
                         DropdownMenuItem(
-                            text = { Text(application.name) },
+                            text = {
+                                Text(application.name)
+                            },
                             onClick = {
                                 selectedApplication = application
                                 selectedUser = null
                                 applicationMenuExpanded = false
+
                                 onApplicationSelected(application)
                             }
                         )
@@ -200,36 +189,27 @@ fun SearchForwardAlertsScreen(
             if (isLoadingApplications) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    color = SearchForwardOrange
+                    color = SearchButtonColor
                 )
             }
 
             // User dropdown
             ExposedDropdownMenuBox(
                 expanded = userMenuExpanded,
-                onExpandedChange = {
-                    userMenuExpanded = !userMenuExpanded
-                }
+                onExpandedChange = { userMenuExpanded = it },
+                modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedTextField(
                     value = selectedUser?.name.orEmpty(),
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("User") },
-                    placeholder = { Text("- Select User -") },
+                    placeholder = { Text("Select User") },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(
                             expanded = userMenuExpanded
                         )
                     },
-                    shape = RoundedCornerShape(50),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = SearchForwardPurple,
-                        unfocusedBorderColor = SearchForwardBorder,
-                        focusedLabelColor = SearchForwardPurple,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
-                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor()
@@ -264,33 +244,37 @@ fun SearchForwardAlertsScreen(
             if (isLoadingUsers) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
-                    color = SearchForwardOrange
+                    color = SearchButtonColor
                 )
             }
 
             // User email field
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
-                label = { Text("User Email") },
-                placeholder = { Text("User Email") },
+                onValueChange = {
+                    email = it
+                },
                 singleLine = true,
-                shape = RoundedCornerShape(50),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = SearchForwardPurple,
-                    unfocusedBorderColor = SearchForwardBorder,
-                    focusedLabelColor = SearchForwardPurple,
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                ),
+                label = {
+                    Text("User Email")
+                },
+                placeholder = {
+                    Text(
+                        text = "Enter user email",
+                        color = PlaceholderColor
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = searchFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
 
             // Active status
             Text(
                 text = "Active",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = SearchTextColor
             )
 
             Row(
@@ -299,7 +283,9 @@ fun SearchForwardAlertsScreen(
             ) {
                 listOf("Yes", "No", "All").forEach { option ->
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -308,12 +294,17 @@ fun SearchForwardAlertsScreen(
                                 selectedStatus = option
                             }
                         )
-                        Text(option)
+
+                        Text(
+                            text = option,
+                            color = SearchTextColor,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             // Search button
             Button(
@@ -340,16 +331,35 @@ fun SearchForwardAlertsScreen(
                         active
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SearchForwardOrange
+                    containerColor = SearchButtonColor,
+                    contentColor = SearchButtonTextColor
                 )
             ) {
                 Text(
                     text = "Search",
-                    color = Color.White
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
     }
 }
+
+@Composable
+private fun searchFieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = SearchButtonColor,
+        unfocusedBorderColor = ForwardFieldBorder,
+        focusedLabelColor = SearchButtonColor,
+        unfocusedLabelColor = SearchTextColor,
+        focusedTextColor = SearchTextColor,
+        unfocusedTextColor = SearchTextColor,
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        cursorColor = SearchButtonColor
+    )

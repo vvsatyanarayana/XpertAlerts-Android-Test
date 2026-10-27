@@ -1,4 +1,3 @@
-
 package com.aquila.pocxpertalerts.ui.screens
 
 import android.text.Html
@@ -30,8 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -42,6 +41,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -60,10 +60,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.theme.AlertAccentColor
+import com.aquila.pocxpertalerts.ui.theme.AlertCardBackground
+import com.aquila.pocxpertalerts.ui.theme.AlertCardBorder
+import com.aquila.pocxpertalerts.ui.theme.AlertSearchBorder
 import com.aquila.pocxpertalerts.ui.theme.IconGreen
+import com.aquila.pocxpertalerts.ui.theme.SelectedAlertColor
 import com.aquila.pocxpertalerts.ui.theme.TextDark
 import com.aquila.pocxpertalerts.ui.theme.TextGray
 import com.aquila.pocxpertalerts.ui.theme.White
@@ -72,15 +80,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-
-
-private val LightOrange = Color(0xFFFFF1E8)
-private val SelectedAlertColor = Color(0xFFFFF4E9)
-
+import com.aquila.pocxpertalerts.ui.components.AppListSearchBar
 // ============================================================
 // HOME SCREEN
 // ============================================================
@@ -100,10 +100,18 @@ fun HomeScreen(
     onAboutClick: () -> Unit,
     alerts: List<AlertDto> = emptyList()
 ) {
-    var showBottomMenu by rememberSaveable { mutableStateOf(false) }
-    var showTopMenu by remember { mutableStateOf(false) }
-    var showSelectionWarning by remember { mutableStateOf(false) }
-    var showLogoutConfirmation by remember { mutableStateOf(false) }
+    var showBottomMenu by rememberSaveable {
+        mutableStateOf(false)
+    }
+    var showTopMenu by remember {
+        mutableStateOf(false)
+    }
+    var showSelectionWarning by remember {
+        mutableStateOf(false)
+    }
+    var showLogoutConfirmation by remember {
+        mutableStateOf(false)
+    }
 
     var selectedDestination by rememberSaveable {
         mutableStateOf("alerts")
@@ -132,21 +140,21 @@ fun HomeScreen(
 
     val selectionMode = selectedAlertIds.isNotEmpty()
 
-    // Remove selections that are no longer present in the results.
     val currentAlertIds = remember(alerts) {
         alerts.map { it.id }.toSet()
     }
 
-    androidx.compose.runtime.LaunchedEffect(currentAlertIds) {
+    LaunchedEffect(currentAlertIds) {
         selectedAlertIds = selectedAlertIds.intersect(currentAlertIds)
     }
 
     fun toggleAlertSelection(alert: AlertDto) {
-        selectedAlertIds = if (alert.id in selectedAlertIds) {
-            selectedAlertIds - alert.id
-        } else {
-            selectedAlertIds + alert.id
-        }
+        selectedAlertIds =
+            if (alert.id in selectedAlertIds) {
+                selectedAlertIds - alert.id
+            } else {
+                selectedAlertIds + alert.id
+            }
     }
 
     fun selectAllAlerts() {
@@ -169,7 +177,9 @@ fun HomeScreen(
     ) {
         when {
             showTopMenu -> showTopMenu = false
+
             selectionMode -> selectedAlertIds = emptySet()
+
             showBottomMenu -> {
                 showBottomMenu = false
                 selectedDestination = "alerts"
@@ -190,7 +200,7 @@ fun HomeScreen(
                 .background(White)
         ) {
 
-            // TOP ORANGE TOOLBAR
+            // Top toolbar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,7 +222,7 @@ fun HomeScreen(
                 )
             }
 
-            // SEARCH BAR AND ALERT LIST
+            // Search bar and alert list
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -244,7 +254,7 @@ fun HomeScreen(
                 )
             }
 
-            // BOTTOM MENU PANEL
+            // Bottom menu
             if (showBottomMenu) {
                 HomeMenu(
                     selectedDestination = selectedDestination,
@@ -280,7 +290,7 @@ fun HomeScreen(
                 )
             }
 
-            // BOTTOM NAVIGATION
+            // Bottom navigation
             BottomNavigationBar(
                 selectedDestination = selectedDestination,
                 onAlertsClick = {
@@ -300,13 +310,14 @@ fun HomeScreen(
                 },
                 onMenuClick = {
                     showBottomMenu = !showBottomMenu
-                    selectedDestination = "menu"
+                    selectedDestination =
+                        if (showBottomMenu) "menu" else "alerts"
                 }
             )
         }
     }
 
-    // Mixed alert-definition warning
+    // Warning when alerts have different definitions
     if (showSelectionWarning) {
         AlertDialog(
             onDismissRequest = {
@@ -380,7 +391,9 @@ private fun HomeHeader(
     onClearSelectionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var showMenu by remember {
+        mutableStateOf(false)
+    }
 
     Row(
         modifier = modifier
@@ -395,7 +408,7 @@ private fun HomeHeader(
                 .padding(start = 8.dp)
                 .size(38.dp)
                 .clip(CircleShape)
-                .background(Color.White),
+                .background(White),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -404,8 +417,7 @@ private fun HomeHeader(
                 ),
                 contentDescription = "Alerts logo",
                 contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .size(30.dp)
+                modifier = Modifier.size(30.dp)
             )
         }
 
@@ -420,8 +432,10 @@ private fun HomeHeader(
                     "Alerts List"
                 },
                 color = White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -463,7 +477,7 @@ private fun HomeHeader(
                         onClick = {
                             showMenu = false
                             onClearSelectionClick()
-                        }
+                      }
                     )
                 }
             }
@@ -490,43 +504,17 @@ fun AlertsContent(
             .fillMaxSize()
             .background(White)
     ) {
-        // The complete Search Alerts field is clickable.
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    start = 18.dp,
-                    end = 18.dp,
-                    top = 18.dp,
-                    bottom = 14.dp
-                )
-                .height(54.dp)
-                .clickable(onClick = onSearchClick),
-            shape = RoundedCornerShape(28.dp),
-            color = White,
-            border = BorderStroke(1.5.dp, Color.Gray)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Search Alerts",
-                    modifier = Modifier.weight(1f),
-                    color = Color.Gray,
-                    fontSize = 18.sp
-                )
-
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Alerts",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(25.dp)
-                )
-            }
-        }
+        // Shared search bar — same style as Subscriptions.
+        AppListSearchBar(
+            placeholder = "Search Alerts",
+            onClick = onSearchClick,
+            modifier = Modifier.padding(
+                start = 15.dp,
+                end = 15.dp,
+                top = 14.dp,
+                bottom = 8.dp
+            )
+        )
 
         if (alerts.isEmpty()) {
             Box(
@@ -552,17 +540,18 @@ fun AlertsContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 groupedAlerts.forEach { (date, dateAlerts) ->
-
                     item(key = "date_$date") {
                         DateHeader(date)
                     }
 
                     items(
                         items = dateAlerts,
-                        key = { "${it.id}_${it.alertSendDate}" }
+                        key = {
+                            "${it.id}_${it.alertSendDate}"
+                        }
                     ) { alert ->
                         AlertCard(
                             alert = alert,
@@ -581,7 +570,6 @@ fun AlertsContent(
         }
     }
 }
-
 // ============================================================
 // DATE HEADER
 // ============================================================
@@ -595,19 +583,23 @@ private fun DateHeader(date: String) {
                 color = XpertOrange,
                 shape = RoundedCornerShape(24.dp)
             )
-            .padding(horizontal = 22.dp, vertical = 6.dp),
+            .padding(
+                horizontal = 22.dp,
+                vertical = 6.dp
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = date,
             color = White,
-            fontSize = 15.sp
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
 // ============================================================
-// ALERT CARD
+// RESPONSIVE ALERT CARD
 // ============================================================
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -621,6 +613,16 @@ private fun AlertCard(
 ) {
     val (displayDate, displayTime) = remember(alert.alertSendDate) {
         formatAlertDate(alert.alertSendDate)
+    }
+
+    val title = remember(alert.subject, alert.id, alert.alertId) {
+        cleanAlertDescription(
+            message = alert.subject,
+            subject = null,
+            id = alert.id
+        ).ifBlank {
+            "Alert ${alert.alertId}"
+        }
     }
 
     val description = remember(
@@ -642,67 +644,106 @@ private fun AlertCard(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(3.dp),
+        shape = RoundedCornerShape(12.dp),
         color = if (selected) {
             SelectedAlertColor
         } else {
-            Color(0xFFF4F4F4)
+            AlertCardBackground
         },
         border = BorderStroke(
             width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) XpertOrange else Color(0xFFE4E4E4)
+            color = if (selected) {
+                AlertAccentColor
+            } else {
+                AlertCardBorder
+            }
         ),
         shadowElevation = 1.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(76.dp),
+                .padding(
+                    horizontal = 12.dp,
+                    vertical = 12.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+            // Date and time
             Column(
-                modifier = Modifier
-                    .width(82.dp)
-                    .padding(horizontal = 5.dp, vertical = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.width(66.dp),
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = displayDate,
-                    color = Color.Gray,
-                    fontSize = 13.sp,
-                    maxLines = 1
+                    color = TextDark,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = displayTime,
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    maxLines = 1
+                    color = TextGray,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
+            // Orange accent line
             Box(
                 modifier = Modifier
-                    .width(2.dp)
-                    .height(60.dp)
-                    .background(XpertOrange)
+                    .padding(horizontal = 10.dp)
+                    .width(3.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(AlertAccentColor)
             )
 
-            Text(
-                text = description,
+            // Alert information
+            Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                color = Color.Gray,
-                fontSize = 13.sp,
-                lineHeight = 16.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+                    .padding(end = 8.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = title,
+                    color = TextDark,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
 
+
+                if (
+                    description.isNotBlank() &&
+                    description != title
+                ) {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = description,
+                        color = TextGray,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+
+
+            }
+
+            // Selection icon
             if (selectionMode) {
                 Icon(
                     imageVector = if (selected) {
@@ -715,10 +756,12 @@ private fun AlertCard(
                     } else {
                         "Not selected"
                     },
-                    tint = if (selected) XpertOrange else IconGreen,
-                    modifier = Modifier
-                        .padding(end = 10.dp)
-                        .size(22.dp)
+                    tint = if (selected) {
+                        AlertAccentColor
+                    } else {
+                        IconGreen
+                    },
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -745,7 +788,9 @@ private fun cleanAlertDescription(
     ).toString()
         .replace(Regex("\\s+"), " ")
         .trim()
-        .ifBlank { "Alert #$id" }
+        .ifBlank {
+            "Alert #$id"
+        }
 }
 
 // ============================================================
@@ -753,7 +798,9 @@ private fun cleanAlertDescription(
 // ============================================================
 
 private fun formatGroupDate(rawDate: String?): String {
-    if (rawDate.isNullOrBlank()) return "Unknown date"
+    if (rawDate.isNullOrBlank()) {
+        return "Unknown date"
+    }
 
     val patterns = listOf(
         "MM/dd/yyyy",
@@ -829,7 +876,7 @@ private fun formatAlertDate(
             return dateText to timeText
 
         } catch (_: ParseException) {
-            // Try the next format.
+            // Try the next supported format.
         }
     }
 
@@ -839,7 +886,6 @@ private fun formatAlertDate(
 // ============================================================
 // EXPANDED BOTTOM MENU
 // ============================================================
-
 
 @Composable
 private fun HomeMenu(
@@ -860,7 +906,6 @@ private fun HomeMenu(
             color = TextGray.copy(alpha = 0.25f)
         )
 
-        // First row: Archived, About, Password Change, Logout
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -905,8 +950,6 @@ private fun HomeMenu(
             color = TextGray.copy(alpha = 0.25f)
         )
 
-        // Second row intentionally empty.
-        // Forward Alerts and Profile are removed.
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
@@ -914,7 +957,6 @@ private fun HomeMenu(
         )
     }
 }
-
 
 // ============================================================
 // MENU ITEM
@@ -929,7 +971,11 @@ private fun MenuItem(
     vectorIcon: ImageVector? = null,
     selected: Boolean = false
 ) {
-    val iconColor = if (selected) XpertOrange else IconGreen
+    val iconColor = if (selected) {
+        XpertOrange
+    } else {
+        IconGreen
+    }
 
     Column(
         modifier = modifier
@@ -960,7 +1006,8 @@ private fun MenuItem(
             text = text,
             fontSize = 10.sp,
             color = if (selected) XpertOrange else TextDark,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -1036,7 +1083,11 @@ private fun BottomTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val iconColor = if (selected) XpertOrange else IconGreen
+    val iconColor = if (selected) {
+        XpertOrange
+    } else {
+        IconGreen
+    }
 
     Column(
         modifier = modifier

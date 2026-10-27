@@ -1,3 +1,4 @@
+
 package com.aquila.pocxpertalerts.ui.screens
 
 import androidx.compose.foundation.Image
@@ -5,14 +6,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,10 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
-
-import com.aquila.pocxpertalerts.ui.theme.TextDark
-
 import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 
@@ -36,52 +33,45 @@ import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 fun AboutScreen(
     onBackClick: () -> Unit = {}
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBackground)
-    ) {
-
-        // -------------------------
-        // Top Bar
-        // -------------------------
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(69.dp)
-                .background(XpertOrange)
-        ) {
-            IconButton(
-                onClick = onBackClick,
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            AppTopBar(
+                title = "About",
+                onBackClick = onBackClick
+            )
+        },
+        bottomBar = {
+            Column(
                 modifier = Modifier
-
-                    .padding(start = 2.dp)
-                    .padding(top = 16.dp)
+                    .fillMaxWidth()
+                    .height(49.dp)
+                    .background(XpertOrange),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = White
+                Text(
+                    text = "App Version : v1.6",
+                    color = White,
+                    fontSize = 11.sp
+                )
+
+                Text(
+                    text = "Copyright © 2020 Aquila Software Inc.",
+                    color = White,
+                    fontSize = 11.sp
                 )
             }
-
-            Text(
-                text = "About",
-                color = White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.align(Alignment.Center)
-
-            )
         }
+    ) { innerPadding ->
 
-        // -------------------------
-        // Main Content
-        // -------------------------
         Box(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(AppBackground),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -96,41 +86,13 @@ fun AboutScreen(
                 contentScale = ContentScale.Fit
             )
         }
-
-        // -------------------------
-        // Bottom Information
-        // -------------------------
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(49.dp)
-                .background(XpertOrange),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "App Version : v1.6",
-                color = White,
-                fontSize = 11.sp
-            )
-
-            Text(
-                text = "Copyright © 2020 Aquila Software Inc.",
-                color = White,
-                fontSize = 11.sp
-            )
-        }
     }
 }
 
 @Preview(
     showBackground = true,
-    showSystemUi = true,
-
-
-    )
-
-
+    showSystemUi = true
+)
 @Composable
 private fun AboutScreenPreview() {
     XpertAlertsTheme {

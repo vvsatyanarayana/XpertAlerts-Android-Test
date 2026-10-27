@@ -1,20 +1,23 @@
+
 package com.aquila.pocxpertalerts.ui.screens
 
 import android.app.Activity
+import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,8 +39,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -55,14 +56,18 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.aquila.pocxpertalerts.data.repository.SubscriptionSaveRequest
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
+import com.aquila.pocxpertalerts.ui.theme.AppBackground
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+import com.aquila.pocxpertalerts.ui.theme.TextGray
+import com.aquila.pocxpertalerts.ui.theme.White
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
 
-private val SubscriptionOrange = Color(0xFFF47716)
 private val SubscriptionGreen = Color(0xFF008F54)
-private val SubscriptionBackground = Color(0xFFFAFAFA)
-private val SubscriptionBorder = Color(0xFFB8B8B8)
-private val SubscriptionText = Color(0xFF292929)
+private val SubscriptionFieldBorder = Color(0xFFB8B8B8)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,8 +84,12 @@ fun SubscriptionDetailsScreen(
     val view = LocalView.current
 
     SideEffect {
-        (view.context as? Activity)?.window?.statusBarColor =
-            SubscriptionOrange.toArgb()
+        (view.context as? Activity)?.window?.let { window ->
+            window.statusBarColor = XpertOrange.toArgb()
+
+            WindowCompat.getInsetsController(window, view)
+                .isAppearanceLightStatusBars = false
+        }
     }
 
     var applicationId by remember(subscriptionId) {
@@ -139,7 +148,7 @@ fun SubscriptionDetailsScreen(
         mutableStateOf<String?>(null)
     }
 
-    // Show a popup when the ViewModel detects a duplicate.
+    // Duplicate-record message.
     if (uiState.duplicateMessage != null) {
         AlertDialog(
             onDismissRequest = {
@@ -162,7 +171,7 @@ fun SubscriptionDetailsScreen(
                 ) {
                     Text(
                         text = "OK",
-                        color = SubscriptionOrange
+                        color = XpertOrange
                     )
                 }
             }
@@ -177,7 +186,7 @@ fun SubscriptionDetailsScreen(
         it.id == alertDefinitionId
     }
 
-    // Load applications and subscription details when the screen opens.
+    // Load applications and existing subscription details.
     LaunchedEffect(
         subscriptionId,
         userId,
@@ -200,9 +209,7 @@ fun SubscriptionDetailsScreen(
         }
     }
 
-    // Populate the form when editing an existing subscription.
-
-
+    // Populate the form when editing.
     LaunchedEffect(
         subscriptionId,
         uiState.selectedSubscription,
@@ -216,21 +223,20 @@ fun SubscriptionDetailsScreen(
             details.userSubId.toString() == subscriptionId &&
             !formInitialized
         ) {
-            val subscriptionFromList = uiState.subscriptions.firstOrNull {
-                it.userSubId.toString() == subscriptionId
-            }
+            val subscriptionFromList =
+                uiState.subscriptions.firstOrNull {
+                    it.userSubId.toString() == subscriptionId
+                }
 
             applicationId = details.applicationId.toString()
             alertDefinitionId = details.alertDefId.toString()
 
-            // Alert name: details first, then list fallback.
             alertName = details.alertName
                 ?.takeIf { it.isNotBlank() }
                 ?: subscriptionFromList?.alertName
                     ?.takeIf { it.isNotBlank() }
                         ?: ""
 
-            // Actual email address: exclude notification flag values.
             val detailsEmail = details.emailId
                 ?.trim()
                 ?.takeIf {
@@ -249,7 +255,6 @@ fun SubscriptionDetailsScreen(
 
             email = detailsEmail ?: listEmail ?: ""
 
-            // Mail checkbox: use the notification flag.
             val mailFlag = details.emailEnabled
                 ?: subscriptionFromList?.emailEnabled
 
@@ -282,7 +287,7 @@ fun SubscriptionDetailsScreen(
 
             formInitialized = true
 
-            android.util.Log.d(
+            Log.d(
                 "SubscriptionDetails",
                 "Subscription ID: $subscriptionId, " +
                         "Alert name: ${details.alertName}, " +
@@ -291,8 +296,6 @@ fun SubscriptionDetailsScreen(
             )
         }
     }
-
-
 
     // Load alert definitions for the selected application.
     LaunchedEffect(
@@ -337,7 +340,7 @@ fun SubscriptionDetailsScreen(
         }
     }
 
-    // Return to the list only after the save succeeds.
+    // Return to the list after a successful save.
     LaunchedEffect(uiState.saveMessage) {
         if (uiState.saveMessage != null) {
             onSaveSuccess()
@@ -345,33 +348,17 @@ fun SubscriptionDetailsScreen(
     }
 
     Scaffold(
-        containerColor = SubscriptionBackground,
+        modifier = Modifier.fillMaxSize(),
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Subscription Details",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
+            AppTopBar(
+                title = if (subscriptionId == "new") {
+                    "Create Subscription"
+                } else {
+                    "Subscription Details"
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SubscriptionOrange,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                onBackClick = onBackClick
             )
         }
     ) { innerPadding ->
@@ -380,22 +367,24 @@ fun SubscriptionDetailsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(White)
                 .verticalScroll(rememberScrollState())
                 .padding(
-                    horizontal = 14.dp,
-                    vertical = 12.dp
+                    horizontal = 16.dp,
+                    vertical = 16.dp
                 ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+
             Text(
                 text = if (subscriptionId == "new") {
                     "Create Subscription"
                 } else {
                     "Edit Subscription"
                 },
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = SubscriptionText
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextDark
             )
 
             if (
@@ -406,7 +395,7 @@ fun SubscriptionDetailsScreen(
                     modifier = Modifier.align(
                         Alignment.CenterHorizontally
                     ),
-                    color = SubscriptionOrange
+                    color = XpertOrange
                 )
             }
 
@@ -428,7 +417,13 @@ fun SubscriptionDetailsScreen(
 
             // Job type.
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = AppBackground,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
@@ -439,15 +434,17 @@ fun SubscriptionDetailsScreen(
                         validationMessage = null
                     },
                     colors = RadioButtonDefaults.colors(
-                        selectedColor = SubscriptionOrange
+                        selectedColor = XpertOrange
                     )
                 )
 
                 Text(
                     text = "Alert Definition",
-                    fontSize = 12.sp,
-                    color = SubscriptionText
+                    fontSize = 13.sp,
+                    color = TextDark
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 RadioButton(
                     selected = jobType == "Aggregate Job",
@@ -456,14 +453,14 @@ fun SubscriptionDetailsScreen(
                         validationMessage = null
                     },
                     colors = RadioButtonDefaults.colors(
-                        selectedColor = SubscriptionOrange
+                        selectedColor = XpertOrange
                     )
                 )
 
                 Text(
                     text = "Aggregate Job",
-                    fontSize = 12.sp,
-                    color = SubscriptionText
+                    fontSize = 13.sp,
+                    color = TextDark
                 )
             }
 
@@ -486,7 +483,7 @@ fun SubscriptionDetailsScreen(
                 Text(
                     text = "Loading alert definitions...",
                     fontSize = 12.sp,
-                    color = SubscriptionText
+                    color = TextGray
                 )
             }
 
@@ -530,17 +527,22 @@ fun SubscriptionDetailsScreen(
                 placeholder = "Sort Order"
             )
 
+            // Active switch.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 2.dp),
+                    .background(
+                        color = AppBackground,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Activate",
                     modifier = Modifier.weight(1f),
-                    fontSize = 12.sp,
-                    color = SubscriptionText
+                    fontSize = 14.sp,
+                    color = TextDark
                 )
 
                 Switch(
@@ -549,39 +551,56 @@ fun SubscriptionDetailsScreen(
                         active = it
                     },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
+                        checkedThumbColor = White,
                         checkedTrackColor = SubscriptionGreen,
                         checkedBorderColor = SubscriptionGreen
                     )
                 )
             }
 
+            // Device and Mail options.
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = AppBackground,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = deviceEnabled,
                     onCheckedChange = {
                         deviceEnabled = it
-                    }
+                    },
+                    colors = androidx.compose.material3.CheckboxDefaults.colors(
+                        checkedColor = XpertOrange
+                    )
                 )
 
                 Text(
                     text = "Device",
-                    fontSize = 12.sp
+                    fontSize = 13.sp,
+                    color = TextDark
                 )
+
+                Spacer(modifier = Modifier.width(18.dp))
 
                 Checkbox(
                     checked = mailEnabled,
                     onCheckedChange = {
                         mailEnabled = it
-                    }
+                    },
+                    colors = androidx.compose.material3.CheckboxDefaults.colors(
+                        checkedColor = XpertOrange
+                    )
                 )
 
                 Text(
                     text = "Mail",
-                    fontSize = 12.sp
+                    fontSize = 13.sp,
+                    color = TextDark
                 )
             }
 
@@ -592,7 +611,7 @@ fun SubscriptionDetailsScreen(
                         messageBody = it
                     },
                     placeholder = "Message Body",
-                    minLines = 3
+                    minLines = 4
                 )
             }
 
@@ -600,7 +619,7 @@ fun SubscriptionDetailsScreen(
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp
+                    fontSize = 13.sp
                 )
             }
 
@@ -608,10 +627,11 @@ fun SubscriptionDetailsScreen(
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp
+                    fontSize = 13.sp
                 )
             }
 
+            // Save subscription. Existing validation and API logic retained.
             Button(
                 onClick = {
                     val app = selectedApplication
@@ -670,34 +690,47 @@ fun SubscriptionDetailsScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
-                shape = RoundedCornerShape(24.dp),
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SubscriptionOrange,
-                    contentColor = Color.White
+                    containerColor = XpertOrange,
+                    contentColor = White
                 ),
                 enabled = !uiState.isSaving &&
                         !uiState.isLoading &&
                         !uiState.isLoadingApplications &&
                         !uiState.isLoadingDefinitions
             ) {
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .height(22.dp)
+                            .width(22.dp),
+                        color = White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 Text(
                     text = if (uiState.isSaving) {
                         "Saving..."
                     } else {
                         "Save"
                     },
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
+
+// ------------------------------------------------------------
+// SHARED-THEME TEXT FIELD
+// ------------------------------------------------------------
 
 @Composable
 private fun SubscriptionTextField(
@@ -712,35 +745,45 @@ private fun SubscriptionTextField(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(
-                min = if (minLines > 1) 84.dp else 48.dp
+                min = if (minLines > 1) 100.dp else 54.dp
             ),
         placeholder = {
             Text(
                 text = placeholder,
-                fontSize = 12.sp,
-                color = Color.Gray
+                fontSize = 14.sp,
+                color = TextGray
             )
         },
         singleLine = minLines == 1,
         minLines = minLines,
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = androidx.compose.material3
             .OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = SubscriptionGreen,
-                unfocusedBorderColor = SubscriptionBorder,
-                disabledBorderColor = SubscriptionBorder,
-                focusedTextColor = SubscriptionText,
-                unfocusedTextColor = SubscriptionText,
-                cursorColor = SubscriptionGreen,
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent
+                focusedBorderColor = XpertOrange,
+                unfocusedBorderColor = SubscriptionFieldBorder.copy(
+                    alpha = 0.75f
+                ),
+                disabledBorderColor = SubscriptionFieldBorder.copy(
+                    alpha = 0.35f
+                ),
+                focusedTextColor = TextDark,
+                unfocusedTextColor = TextDark,
+                disabledTextColor = TextGray,
+                cursorColor = XpertOrange,
+                focusedContainerColor = White,
+                unfocusedContainerColor = White,
+                disabledContainerColor = AppBackground
             ),
         textStyle = TextStyle(
-            fontSize = 12.sp,
-            color = SubscriptionText
+            fontSize = 14.sp,
+            color = TextDark
         )
     )
 }
+
+// ------------------------------------------------------------
+// SHARED-THEME DROPDOWN
+// ------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -775,28 +818,33 @@ private fun <T> SubscriptionDropdown(
                     ExposedDropdownMenuAnchorType.PrimaryNotEditable
                 )
                 .fillMaxWidth()
-                .heightIn(min = 48.dp),
+                .heightIn(min = 54.dp),
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(
                     expanded = expanded
                 )
             },
-            shape = RoundedCornerShape(26.dp),
+            shape = RoundedCornerShape(14.dp),
             textStyle = TextStyle(
-                fontSize = 12.sp,
-                color = SubscriptionText
+                fontSize = 14.sp,
+                color = TextDark
             ),
             colors = androidx.compose.material3
                 .OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = SubscriptionGreen,
-                    unfocusedBorderColor = SubscriptionBorder,
-                    disabledBorderColor = SubscriptionBorder,
-                    focusedTextColor = SubscriptionText,
-                    unfocusedTextColor = SubscriptionText,
-                    disabledTextColor = SubscriptionText,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent
+                    focusedBorderColor = XpertOrange,
+                    unfocusedBorderColor = SubscriptionFieldBorder.copy(
+                        alpha = 0.75f
+                    ),
+                    disabledBorderColor = SubscriptionFieldBorder.copy(
+                        alpha = 0.35f
+                    ),
+                    focusedTextColor = TextDark,
+                    unfocusedTextColor = TextDark,
+                    disabledTextColor = TextGray,
+                    cursorColor = XpertOrange,
+                    focusedContainerColor = White,
+                    unfocusedContainerColor = White,
+                    disabledContainerColor = AppBackground
                 )
         )
 
@@ -812,7 +860,8 @@ private fun <T> SubscriptionDropdown(
                     text = {
                         Text(
                             text = optionLabel(option),
-                            fontSize = 13.sp
+                            fontSize = 14.sp,
+                            color = TextDark
                         )
                     },
                     onClick = {

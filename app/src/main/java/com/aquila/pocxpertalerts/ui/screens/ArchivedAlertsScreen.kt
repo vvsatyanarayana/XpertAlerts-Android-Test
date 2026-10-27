@@ -3,36 +3,61 @@ package com.aquila.pocxpertalerts.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.components.AppListSearchBar
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
+import com.aquila.pocxpertalerts.ui.theme.AppBackground
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+import com.aquila.pocxpertalerts.ui.theme.TextGray
+import com.aquila.pocxpertalerts.ui.theme.White
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val ArchivedOrange = Color(0xFFED741C)
-private val ArchivedGray = Color(0xFF757575)
-private val ArchivedSearchBackground = Color(0xFFF4F5F7)
-private val ArchivedCardBackground = Color(0xFFF1F1F1)
+// ------------------------------------------------------------
+// MODEL
+// Keep the existing fields for API and navigation compatibility.
+// ------------------------------------------------------------
 
-// Keep the existing model and its fields.
 data class ArchivedAlertUi(
     val id: String,
     val title: String,
@@ -49,7 +74,10 @@ data class ArchivedAlertUi(
     val applicationId: Long = 0L
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ------------------------------------------------------------
+// ARCHIVED ALERTS SCREEN
+// ------------------------------------------------------------
+
 @Composable
 fun ArchivedAlertsScreen(
     alerts: List<ArchivedAlertUi>,
@@ -62,184 +90,156 @@ fun ArchivedAlertsScreen(
     onRetryClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {}
 ) {
-    // Group alerts by their actual date while preserving their existing order.
+    // Preserve the original alert order while grouping by date.
     val groupedAlerts = remember(alerts) {
         alerts.groupBy { alert ->
             formatGroupDate(alert.date)
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Orange toolbar
-        Box(
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            AppTopBar(
+                title = "Archived Alerts",
+                onBackClick = onBackClick
+            )
+        }
+    ) { innerPadding ->
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(ArchivedOrange)
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(AppBackground)
         ) {
-            Text(
-                text = "Archived Alerts",
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
+
+            // Shared search bar, matching the other app screens.
+            AppListSearchBar(
+                placeholder = "Search Archived Alerts",
+                onClick = onSearchClick,
+                modifier = Modifier.padding(
+                    start = 15.dp,
+                    end = 15.dp,
+                    top = 14.dp,
+                    bottom = 10.dp
+                )
             )
 
-            IconButton(
-                onClick = onBackClick,
+            // Pull-to-refresh and alert content.
+            PullToRefreshBox(
+                isRefreshing = isLoading && alerts.isNotEmpty(),
+                onRefresh = onRefreshClick,
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .size(44.dp)
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-        }
-
-        // Existing search interaction retained.
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp)
-                .height(40.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onSearchClick),
-            shape = CircleShape,
-            color = ArchivedSearchBackground,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Search Archived Alerts",
-                    modifier = Modifier.weight(1f),
-                    color = ArchivedGray,
-                    fontSize = 13.sp,
-                    maxLines = 1
-                )
-
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search archived alerts",
-                    tint = ArchivedGray,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        // Keep pull-to-refresh and existing loading states.
-        PullToRefreshBox(
-            isRefreshing = isLoading && alerts.isNotEmpty(),
-            onRefresh = onRefreshClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 4.dp,
-                    end = 4.dp,
-                    top = 2.dp,
-                    bottom = 16.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                when {
-                    isLoading && alerts.isEmpty() -> {
-                        item(key = "initial_loading") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(220.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    color = ArchivedOrange
-                                )
-                            }
-                        }
-                    }
-
-                    errorMessage != null && alerts.isEmpty() -> {
-                        item(key = "error_state") {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = errorMessage,
-                                    color = ArchivedGray,
-                                    fontSize = 14.sp
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Button(
-                                    onClick = onRetryClick,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = ArchivedOrange
-                                    )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 15.dp,
+                        end = 15.dp,
+                        top = 4.dp,
+                        bottom = 20.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when {
+                        isLoading && alerts.isEmpty() -> {
+                            item(key = "initial_loading") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(220.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Retry", color = Color.White)
+                                    CircularProgressIndicator(
+                                        color = XpertOrange
+                                    )
                                 }
                             }
                         }
-                    }
 
-                    alerts.isEmpty() -> {
-                        item(key = "empty_state") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(220.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No records found",
-                                    color = ArchivedGray,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                        errorMessage != null && alerts.isEmpty() -> {
+                            item(key = "error_state") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(
+                                            horizontal = 16.dp,
+                                            vertical = 48.dp
+                                        ),
+                                    horizontalAlignment =
+                                        Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = errorMessage,
+                                        color = TextGray,
+                                        fontSize = 14.sp
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.height(16.dp)
+                                    )
+
+                                    Button(
+                                        onClick = onRetryClick,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = XpertOrange
+                                        ),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text(
+                                            text = "Retry",
+                                            color = White
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    else -> {
-                        groupedAlerts.forEach { (dateHeader, dateAlerts) ->
-                            // Orange rounded date header.
-                            item(key = "date_$dateHeader") {
-                                DateGroupHeader(date = dateHeader)
+                        alerts.isEmpty() -> {
+                            item(key = "empty_state") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(220.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No records found",
+                                        color = TextGray,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
+                        }
 
-                            // Compact card for each alert.
-                            items(
-                                items = dateAlerts,
-                                key = { alert -> alert.id }
-                            ) { alert ->
-                                ArchivedAlertRow(
-                                    alert = alert,
-                                    onClick = {
-                                        onAlertClick(alert)
-                                    }
-                                )
+                        else -> {
+                            groupedAlerts.forEach { (dateHeader, dateAlerts) ->
+
+                                // Date header.
+                                item(key = "date_$dateHeader") {
+                                    DateGroupHeader(
+                                        date = dateHeader
+                                    )
+                                }
+
+                                // Alert cards.
+                                items(
+                                    items = dateAlerts,
+                                    key = { alert -> alert.id }
+                                ) { alert ->
+                                    ArchivedAlertCard(
+                                        alert = alert,
+                                        onClick = {
+                                            onAlertClick(alert)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -249,106 +249,177 @@ fun ArchivedAlertsScreen(
     }
 }
 
+// ------------------------------------------------------------
+// DATE GROUP HEADER
+// ------------------------------------------------------------
+
 @Composable
-private fun DateGroupHeader(date: String) {
+private fun DateGroupHeader(
+    date: String
+) {
     Box(
         modifier = Modifier
             .padding(
-                top = 3.dp,
-                bottom = 8.dp
+                top = 4.dp,
+                bottom = 2.dp
             )
-            .height(34.dp)
-            .defaultMinSize(minWidth = 82.dp)
             .clip(CircleShape)
-            .background(ArchivedOrange)
-            .padding(horizontal = 16.dp),
+            .background(XpertOrange)
+            .padding(
+                horizontal = 16.dp,
+                vertical = 8.dp
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = date,
-            color = Color.White,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            color = White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1
         )
     }
 }
 
+// ------------------------------------------------------------
+// ARCHIVED ALERT CARD
+// ------------------------------------------------------------
+
 @Composable
-private fun ArchivedAlertRow(
+private fun ArchivedAlertCard(
     alert: ArchivedAlertUi,
     onClick: () -> Unit
 ) {
     val dateTime = splitAlertDateTime(alert.date)
 
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 62.dp)
-            .background(
-                color = ArchivedCardBackground,
-                shape = MaterialTheme.shapes.extraSmall
-            )
             .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        )
     ) {
-        // Left column: date and time.
-        Column(
+        Row(
             modifier = Modifier
-                .width(78.dp)
-                .padding(horizontal = 3.dp, vertical = 5.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .fillMaxWidth()
+                .heightIn(min = 76.dp)
+                .padding(
+                    horizontal = 12.dp,
+                    vertical = 12.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = dateTime.first,
-                color = ArchivedGray,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+
+            // Date and time.
+            Column(
+                modifier = Modifier.width(76.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = dateTime.first,
+                    color = TextDark,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (dateTime.second.isNotBlank()) {
+                    Spacer(
+                        modifier = Modifier.height(5.dp)
+                    )
+
+                    Text(
+                        text = dateTime.second,
+                        color = TextGray,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.width(10.dp)
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            // Orange divider.
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .heightIn(min = 44.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(XpertOrange)
+            )
 
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
+
+            // Subject and alert title.
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = alert.subject
+                        .ifBlank { alert.title }
+                        .ifBlank { "No subject available" },
+                    color = TextDark,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 19.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (alert.title.isNotBlank() &&
+                    alert.subject.isNotBlank() &&
+                    !alert.title.equals(alert.subject, ignoreCase = true)
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(4.dp)
+                    )
+
+                    Text(
+                        text = alert.title,
+                        color = TextGray,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.width(4.dp)
+            )
+
+            // Subtle navigation indicator.
             Text(
-                text = dateTime.second,
-                color = ArchivedGray,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = "›",
+                color = TextGray,
+                fontSize = 25.sp,
+                lineHeight = 25.sp
             )
         }
 
-        // Thin orange vertical line.
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .heightIn(min = 48.dp)
-                .align(Alignment.CenterVertically)
-                .background(ArchivedOrange)
-        )
-
-        // Display only the subject in the archived alerts list.
-        Text(
-            text = alert.subject
-                .ifBlank { alert.title }
-                .ifBlank { "No subject available" },
-            modifier = Modifier
-                .weight(1f)
-                .padding(
-                    start = 12.dp,
-                    end = 8.dp,
-                    top = 8.dp,
-                    bottom = 8.dp
-                ),
-            color = ArchivedGray,
-            fontSize = 14.sp,
-            lineHeight = 16.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+        HorizontalDivider(
+            color = TextGray.copy(alpha = 0.12f),
+            thickness = 0.5.dp
         )
     }
 }
+
+// ------------------------------------------------------------
+// DATE PARSING
+// ------------------------------------------------------------
 
 private val supportedDateFormats = listOf(
     "MM/dd/yyyy hh:mm a",
@@ -367,7 +438,9 @@ private val supportedDateFormats = listOf(
     "yyyy-MM-dd"
 )
 
-private fun parseAlertDate(rawDate: String): Date? {
+private fun parseAlertDate(
+    rawDate: String
+): Date? {
     for (pattern in supportedDateFormats) {
         try {
             val formatter = SimpleDateFormat(
@@ -381,24 +454,32 @@ private fun parseAlertDate(rawDate: String): Date? {
                 return parsedDate
             }
         } catch (_: Exception) {
-            // Try another supported date format.
+            // Try the next supported date format.
         }
     }
 
     return null
 }
 
-private fun formatGroupDate(rawDate: String): String {
+private fun formatGroupDate(
+    rawDate: String
+): String {
     val parsedDate = parseAlertDate(rawDate)
 
     return if (parsedDate != null) {
-        SimpleDateFormat("dd MMM", Locale.ENGLISH).format(parsedDate)
+        SimpleDateFormat(
+            "dd MMM",
+            Locale.ENGLISH
+        ).format(parsedDate)
     } else {
-        rawDate.substringBefore(" ").ifBlank { "Unknown date" }
+        rawDate.substringBefore(" ")
+            .ifBlank { "Unknown date" }
     }
 }
 
-private fun splitAlertDateTime(rawDate: String): Pair<String, String> {
+private fun splitAlertDateTime(
+    rawDate: String
+): Pair<String, String> {
     val parsedDate = parseAlertDate(rawDate)
 
     return if (parsedDate != null) {
@@ -407,11 +488,14 @@ private fun splitAlertDateTime(rawDate: String): Pair<String, String> {
             Locale.ENGLISH
         ).format(parsedDate)
 
-        val time = if (rawDate.contains(":")) {
+        val hasTime = rawDate.contains(":")
+
+        val time = if (hasTime) {
             SimpleDateFormat(
                 "hh:mm a",
                 Locale.ENGLISH
-            ).format(parsedDate).uppercase(Locale.ENGLISH)
+            ).format(parsedDate)
+                .uppercase(Locale.ENGLISH)
         } else {
             ""
         }
@@ -424,6 +508,10 @@ private fun splitAlertDateTime(rawDate: String): Pair<String, String> {
         )
     }
 }
+
+// ------------------------------------------------------------
+// PREVIEWS
+// ------------------------------------------------------------
 
 @Preview(
     name = "Archived Alerts - Results",
@@ -438,25 +526,25 @@ private fun ArchivedAlertsResultsPreview() {
             title = "Application Alert",
             date = "01/27/2026 04:09 AM",
             subject = "Estimate Request",
-            description = "Estimate Request Sent/Ack for the Event# 1770 (Walter - Tuesday January)"
+            description = "Estimate Request Sent/Ack for Event 1770"
         ),
         ArchivedAlertUi(
             id = "2",
             title = "Application Alert",
-            date = "01/27/2026 04:09 AM",
-            subject = "Estimate Request",
-            description = "Estimate Request Sent/Ack for the Event# 1770 (Walter - Tuesday January)"
+            date = "01/27/2026 05:15 AM",
+            subject = "Database Alert",
+            description = "Database alert notification"
         ),
         ArchivedAlertUi(
             id = "3",
             title = "Task Alert",
             date = "01/22/2026 04:00 AM",
             subject = "Task Due and Past Due",
-            description = "Task Due and Past Due"
+            description = "Task due notification"
         )
     )
 
-    MaterialTheme {
+    XpertAlertsTheme {
         ArchivedAlertsScreen(
             alerts = previewAlerts,
             onBackClick = {},
@@ -472,7 +560,7 @@ private fun ArchivedAlertsResultsPreview() {
 )
 @Composable
 private fun ArchivedAlertsEmptyPreview() {
-    MaterialTheme {
+    XpertAlertsTheme {
         ArchivedAlertsScreen(
             alerts = emptyList(),
             onBackClick = {},

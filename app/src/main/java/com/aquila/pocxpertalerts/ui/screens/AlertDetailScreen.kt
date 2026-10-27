@@ -1,11 +1,14 @@
 
 package com.aquila.pocxpertalerts.ui.screens
 
+import android.text.Html
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,57 +19,40 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
+import com.aquila.pocxpertalerts.ui.theme.AppBackground
+import com.aquila.pocxpertalerts.ui.theme.AlertAccentColor
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+import com.aquila.pocxpertalerts.ui.theme.TextGray
+import com.aquila.pocxpertalerts.ui.theme.White
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
+import java.text.ParseException
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
-import android.text.Html
-private val XpertOrange = Color(0xFFED741C)
-private val XpertPurple = Color(0xFF3F237D)
-private val ScreenBackground = Color(0xFFF7F7F7)
-private val DarkText = Color(0xFF222222)
-private val GrayText = Color(0xFF777777)
-private val LightOrange = Color(0xFFFFF1E8)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertDetailScreen(
     alert: AlertDto,
     onBackClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    var selectedAction by remember { mutableStateOf<String?>(null) }
-
     val displayedId = if (alert.alertId != 0) {
         alert.alertId.toString()
     } else {
@@ -93,43 +79,14 @@ fun AlertDetailScreen(
     }
 
     Scaffold(
-        containerColor = ScreenBackground,
+        modifier = Modifier.fillMaxSize(),
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-
-
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Alert Details",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    // Empty spacer balances the back button,
-                    // keeping the title visually centered.
-                    Spacer(modifier = Modifier.width(48.dp))
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = XpertOrange,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+            AppTopBar(
+                title = "Alert Details",
+                onBackClick = onBackClick
             )
-
-
         }
     ) { innerPadding ->
 
@@ -137,18 +94,25 @@ fun AlertDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(AppBackground)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 16.dp),
+                .padding(
+                    horizontal = 15.dp,
+                    vertical = 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Alert summary
+
+            // Alert summary card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = White
                 ),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
+                )
             ) {
                 Row(
                     modifier = Modifier
@@ -157,11 +121,13 @@ fun AlertDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(46.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = LightOrange
+                        color = AlertAccentColor.copy(alpha = 0.12f)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Box(
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = "Alert",
@@ -173,20 +139,22 @@ fun AlertDetailScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
                             text = subject,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkText
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextDark
                         )
 
-                        Spacer(modifier = Modifier.height(5.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
                             text = receivedDate,
-                            fontSize = 13.sp,
-                            color = GrayText
+                            fontSize = 12.sp,
+                            color = TextGray
                         )
                     }
                 }
@@ -195,31 +163,33 @@ fun AlertDetailScreen(
             // Full alert message
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = White
                 ),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 1.dp
+                )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp)
+                        .padding(16.dp)
                 ) {
                     Text(
-                        text = "Message",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = XpertPurple
+                        text = "Message Details",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = XpertOrange
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
                         text = message,
-                        fontSize = 15.sp,
-                        lineHeight = 24.sp,
-                        color = DarkText
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp,
+                        color = TextDark
                     )
                 }
             }
@@ -227,23 +197,25 @@ fun AlertDetailScreen(
             // Alert information
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = White
                 ),
-                elevation = CardDefaults.cardElevation(1.dp)
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 1.dp
+                )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
                         text = "Alert Information",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = XpertPurple
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = XpertOrange
                     )
 
                     DetailRow(
@@ -260,30 +232,21 @@ fun AlertDetailScreen(
                         label = "Application ID",
                         value = alert.applicationId.toString()
                     )
-
-
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
         }
-    }
-
-    selectedAction?.let { action ->
-        AlertActionConfirmationDialog(
-            action = action,
-            onConfirm = {
-                // Connect the action API here when available.
-                selectedAction = null
-            },
-            onDismiss = {
-                selectedAction = null
-            }
-        )
     }
 }
 
-private fun formatAlertDate(rawDate: String?): String {
+// ------------------------------------------------------------
+// DATE FORMATTING
+// ------------------------------------------------------------
+
+private fun formatAlertDate(
+    rawDate: String?
+): String {
     if (rawDate.isNullOrBlank()) {
         return "Date unavailable"
     }
@@ -294,33 +257,39 @@ private fun formatAlertDate(rawDate: String?): String {
         "MM/dd/yyyy HH:mm",
         "dd/MM/yyyy hh:mm a",
         "dd/MM/yyyy HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
         "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd HH:mm:ss",
         "yyyy-MM-dd"
     )
 
     for (pattern in patterns) {
         try {
-            val parser = java.text.SimpleDateFormat(
+            val parser = SimpleDateFormat(
                 pattern,
-                java.util.Locale.US
+                Locale.US
             ).apply {
                 isLenient = false
             }
 
-            val parsedDate = parser.parse(rawDate) ?: continue
+            val parsedDate: Date = parser.parse(rawDate) ?: continue
 
-            return java.text.SimpleDateFormat(
+            return SimpleDateFormat(
                 "dd MMM yyyy",
-                java.util.Locale.US
+                Locale.US
             ).format(parsedDate)
 
-        } catch (_: java.text.ParseException) {
+        } catch (_: ParseException) {
             // Try the next supported format.
         }
     }
 
     return rawDate
 }
+
+// ------------------------------------------------------------
+// DETAIL ROW
+// ------------------------------------------------------------
 
 @Composable
 private fun DetailRow(
@@ -329,63 +298,36 @@ private fun DetailRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            fontSize = 14.sp,
-            color = GrayText
+            fontSize = 13.sp,
+            color = TextGray
         )
+
+        Spacer(modifier = Modifier.width(12.dp))
 
         Text(
             text = value,
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = DarkText
+            color = TextDark
         )
     }
 }
 
-@Composable
-private fun AlertActionConfirmationDialog(
-    action: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Confirmation",
-                tint = XpertOrange,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = {
-            Text(
-                text = "Confirm Action",
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Text("Are you sure you want to \"$action\" this alert?")
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Confirm", color = XpertOrange)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
+// ------------------------------------------------------------
+// PREVIEW
+// ------------------------------------------------------------
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(
+    name = "Alert Details",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=873dp,dpi=440"
+)
 @Composable
 private fun AlertDetailScreenPreview() {
     XpertAlertsTheme {

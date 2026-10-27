@@ -262,6 +262,7 @@ class ForwardAlertsViewModel(
         }
     }
 
+
     fun loadUsers(applicationId: String = "0") {
         if (
             currentUserId.isBlank() ||
@@ -270,6 +271,11 @@ class ForwardAlertsViewModel(
         ) {
             _formState.value = _formState.value.copy(
                 errorMessage = "User session is missing."
+            )
+
+            Log.e(
+                "ForwardUsers",
+                "Cannot load users: user ID, user type ID, or session ID is missing."
             )
             return
         }
@@ -282,6 +288,11 @@ class ForwardAlertsViewModel(
             )
 
             try {
+                Log.d(
+                    "ForwardUsers",
+                    "Loading users for applicationId=$applicationId"
+                )
+
                 val response = repository.getUsers(
                     userId = currentUserId,
                     userTypeId = currentUserTypeId,
@@ -289,10 +300,20 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
+                Log.d("ForwardUsers", "Raw response: $response")
+
                 val records = response.toOptionRecords()
 
-                val users = records.mapNotNull { item ->
-                    if (!item.isJsonObject) return@mapNotNull null
+                Log.d(
+                    "ForwardUsers",
+                    "Response records count: ${records.size}"
+                )
+
+                val parsedUsers = records.mapNotNull { item ->
+                    if (!item.isJsonObject) {
+                        Log.w("ForwardUsers", "Skipping non-object record: $item")
+                        return@mapNotNull null
+                    }
 
                     val obj = item.asJsonObject
 
@@ -300,29 +321,78 @@ class ForwardAlertsViewModel(
                         keys.firstNotNullOfOrNull { key ->
                             obj.get(key)
                                 ?.takeIf { !it.isJsonNull }
-                                ?.let { runCatching { it.asString }.getOrNull() }
+                                ?.let {
+                                    runCatching { it.asString }.getOrNull()
+                                }
                                 ?.takeIf { it.isNotBlank() }
                         }.orEmpty()
 
-                    val id = read("userId", "baseUserId", "mapUserId", "id")
+                    val id = read(
+                        "userId",
+                        "baseUserId",
+                        "mapUserId",
+                        "mappedUserId",
+                        "id"
+                    )
+
                     val firstName = read("firstName", "firstname")
                     val lastName = read("lastName", "lastname")
-                    val name = read("userName", "name").ifBlank {
+
+                    val name = read(
+                        "userName",
+                        "username",
+                        "name",
+                        "fullName",
+                        "displayName"
+                    ).ifBlank {
                         listOf(firstName, lastName)
                             .filter { it.isNotBlank() }
                             .joinToString(" ")
                     }
-                    val email = read("email", "mailId")
 
-                    if (id.isBlank() || name.isBlank()) null
-                    else ForwardUserOption(id, name, email)
+                    val email = read("email", "userEmail", "mailId")
+
+                    Log.d(
+                        "ForwardUsers",
+                        "Parsed candidate: id=$id, name=$name, email=$email"
+                    )
+
+                    if (id.isBlank() || name.isBlank()) {
+                        Log.w(
+                            "ForwardUsers",
+                            "Skipping record because ID or name is missing: $obj"
+                        )
+                        null
+                    } else {
+                        ForwardUserOption(
+                            id = id,
+                            name = name,
+                            email = email
+                        )
+                    }
                 }
 
+                Log.d(
+                    "ForwardUsers",
+                    "Successfully parsed ${parsedUsers.size} users"
+                )
+
                 _formState.value = _formState.value.copy(
-                    users = users,
-                    isLoadingUsers = false
+                    users = parsedUsers,
+                    isLoadingUsers = false,
+                    errorMessage = if (parsedUsers.isEmpty()) {
+                        "No users were returned. Check the API response in Logcat."
+                    } else {
+                        null
+                    }
                 )
             } catch (e: Exception) {
+                Log.e(
+                    "ForwardUsers",
+                    "Failed to load users for applicationId=$applicationId",
+                    e
+                )
+
                 _formState.value = _formState.value.copy(
                     isLoadingUsers = false,
                     errorMessage = e.message ?: "Unable to load users."
@@ -330,6 +400,7 @@ class ForwardAlertsViewModel(
             }
         }
     }
+
 
     fun loadCreateUserEmail(userId: String) {
         if (userId.isBlank() || currentSessionId.isBlank()) {

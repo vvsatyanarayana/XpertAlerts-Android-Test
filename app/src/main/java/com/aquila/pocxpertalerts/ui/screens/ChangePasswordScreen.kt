@@ -3,10 +3,9 @@ package com.aquila.pocxpertalerts.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -33,21 +31,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val ChangePasswordOrange = Color(0xFFF47716)
-private val ChangePasswordBorder = Color(0xFF777777)
-private val ChangePasswordHint = Color(0xFF777777)
-private val ChangePasswordText = Color(0xFF555555)
-private val ChangePasswordFieldBackground = Color(0xFFF7F7F7)
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
+import com.aquila.pocxpertalerts.ui.theme.AppBackground
+import com.aquila.pocxpertalerts.ui.theme.IconGreen
+import com.aquila.pocxpertalerts.ui.theme.TextDark
+import com.aquila.pocxpertalerts.ui.theme.TextGray
+import com.aquila.pocxpertalerts.ui.theme.White
+import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 
 @Composable
 fun ChangePasswordScreen(
@@ -61,8 +60,7 @@ fun ChangePasswordScreen(
         oldPassword: String,
         newPassword: String
     ) -> Unit = { _, _, _ -> }
-){
-
+) {
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -75,91 +73,63 @@ fun ChangePasswordScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(ChangePasswordOrange),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Change Password",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.size(44.dp))
-            }
+            AppTopBar(
+                title = "Change Password",
+                onBackClick = onBackClick
+            )
         }
     ) { innerPadding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(AppBackground)
                 .padding(innerPadding)
-                .padding(horizontal = 12.dp)
-                .padding(top = 14.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 20.dp
+                ),
+            verticalArrangement = Arrangement.Top
         ) {
 
+            // Read-only Login ID
             OutlinedTextField(
                 value = loginId,
                 onValueChange = {},
                 readOnly = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
                         text = "Login ID",
-                        fontSize = 12.sp,
-                        color = ChangePasswordHint,
-                        maxLines = 1
+                        color = TextGray,
+                        fontSize = 14.sp
+                    )
+                },
+                label = {
+                    Text(
+                        text = "Login ID",
+                        fontSize = 13.sp
                     )
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(50.dp),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text
-                ),
+                shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    disabledBorderColor = Color.Transparent,
-                    focusedContainerColor = ChangePasswordFieldBackground,
-                    unfocusedContainerColor = ChangePasswordFieldBackground,
-                    cursorColor = ChangePasswordOrange
-                ),
-                textStyle = MaterialTheme.typography.bodySmall.copy(
-                    fontSize = 12.sp,
-                    color = ChangePasswordText
+                    focusedBorderColor = XpertOrange,
+                    unfocusedBorderColor = TextGray.copy(alpha = 0.5f),
+                    focusedContainerColor = White,
+                    unfocusedContainerColor = White,
+                    focusedTextColor = TextDark,
+                    unfocusedTextColor = TextDark,
+                    cursorColor = XpertOrange
                 )
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Old Password
             PasswordInput(
                 value = oldPassword,
                 onValueChange = {
@@ -173,8 +143,9 @@ fun ChangePasswordScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
+            // New Password
             PasswordInput(
                 value = newPassword,
                 onValueChange = {
@@ -188,8 +159,9 @@ fun ChangePasswordScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
+            // Confirm Password
             PasswordInput(
                 value = confirmPassword,
                 onValueChange = {
@@ -203,8 +175,9 @@ fun ChangePasswordScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(13.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
+            // Save button
             Button(
                 onClick = {
                     errorMessage = when {
@@ -252,52 +225,55 @@ fun ChangePasswordScreen(
                 enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(45.dp),
-                shape = RoundedCornerShape(50.dp),
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ChangePasswordOrange,
-                    contentColor = Color.White,
-                    disabledContainerColor = ChangePasswordOrange.copy(
-                        alpha = 0.6f
-                    )
+                    containerColor = XpertOrange,
+                    contentColor = White,
+                    disabledContainerColor = XpertOrange.copy(alpha = 0.6f)
                 )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        modifier = Modifier.size(22.dp),
+                        color = White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = "Save",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
+            // Validation, API error, or success message
             val displayedMessage = errorMessage.ifBlank {
                 message.orEmpty()
             }
 
-            if (displayedMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+            if (displayedMessage.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = displayedMessage,
                     color = if (isSuccess && errorMessage.isBlank()) {
-                        Color(0xFF2E7D32)
+                        IconGreen
                     } else {
                         MaterialTheme.colorScheme.error
                     },
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         }
     }
 }
+
+// ------------------------------------------------------------
+// REUSABLE PASSWORD FIELD
+// ------------------------------------------------------------
 
 @Composable
 private fun PasswordInput(
@@ -310,19 +286,16 @@ private fun PasswordInput(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp),
+        modifier = Modifier.fillMaxWidth(),
         placeholder = {
             Text(
                 text = placeholder,
-                fontSize = 12.sp,
-                color = ChangePasswordHint,
-                maxLines = 1
+                fontSize = 14.sp,
+                color = TextGray
             )
         },
         singleLine = true,
-        shape = RoundedCornerShape(50.dp),
+        shape = RoundedCornerShape(12.dp),
         visualTransformation = if (passwordVisible) {
             VisualTransformation.None
         } else {
@@ -330,8 +303,7 @@ private fun PasswordInput(
         },
         trailingIcon = {
             IconButton(
-                onClick = onVisibilityChange,
-                modifier = Modifier.size(36.dp)
+                onClick = onVisibilityChange
             ) {
                 Icon(
                     imageVector = if (passwordVisible) {
@@ -344,8 +316,7 @@ private fun PasswordInput(
                     } else {
                         "Show password"
                     },
-                    tint = ChangePasswordHint,
-                    modifier = Modifier.size(16.dp)
+                    tint = TextGray
                 )
             }
         },
@@ -353,15 +324,37 @@ private fun PasswordInput(
             keyboardType = KeyboardType.Password
         ),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = ChangePasswordBorder,
-            unfocusedBorderColor = ChangePasswordBorder,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            cursorColor = ChangePasswordOrange
-        ),
-        textStyle = MaterialTheme.typography.bodySmall.copy(
-            fontSize = 12.sp,
-            color = ChangePasswordText
+            focusedBorderColor = XpertOrange,
+            unfocusedBorderColor = TextGray.copy(alpha = 0.5f),
+            focusedContainerColor = White,
+            unfocusedContainerColor = White,
+            focusedTextColor = TextDark,
+            unfocusedTextColor = TextDark,
+            cursorColor = XpertOrange
         )
     )
+}
+
+// ------------------------------------------------------------
+// PREVIEW
+// ------------------------------------------------------------
+
+@Preview(
+    name = "Change Password Screen",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=873dp,dpi=440"
+)
+@Composable
+private fun ChangePasswordScreenPreview() {
+    XpertAlertsTheme {
+        ChangePasswordScreen(
+            loginId = "satyanarayana@example.com",
+            onBackClick = {},
+            isLoading = false,
+            message = null,
+            isSuccess = false,
+            onSaveClick = { _, _, _ -> }
+        )
+    }
 }

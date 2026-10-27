@@ -2,23 +2,26 @@
 package com.aquila.pocxpertalerts.ui.screens
 
 import android.app.Activity
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +30,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -37,13 +39,14 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import com.aquila.pocxpertalerts.data.model.SubscriptionDto
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import com.aquila.pocxpertalerts.ui.components.AppListSearchBar
+import com.aquila.pocxpertalerts.ui.components.AppTopBar
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
 import com.aquila.pocxpertalerts.ui.theme.TextGray
 import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
-import com.aquila.pocxpertalerts.ui.theme.XpertPurple
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
-
+import androidx.compose.foundation.layout.WindowInsets
 @Composable
 fun SubscriptionsScreen(
     onBackClick: () -> Unit,
@@ -55,20 +58,21 @@ fun SubscriptionsScreen(
     sessionId: String
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // Set the status bar color to match the toolbar.
     val view = LocalView.current
 
+    // Keep the status bar orange.
     SideEffect {
         val activity = view.context as? Activity
+
         activity?.window?.let { window ->
             window.statusBarColor = XpertOrange.toArgb()
+
             WindowCompat.getInsetsController(window, view)
                 .isAppearanceLightStatusBars = false
         }
     }
 
-    // Load subscriptions from the existing API.
+    // Load subscriptions when the user/session changes.
     LaunchedEffect(userId, sessionId) {
         viewModel.loadInitialSubscriptions(
             userId = userId,
@@ -76,209 +80,137 @@ fun SubscriptionsScreen(
         )
     }
 
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = AppBackground
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(White)
         ) {
+            AppTopBar(
+                title = "My Subscriptions",
+                onBackClick = onBackClick,
+                trailingActionText = "Create",
+                onTrailingActionClick = onCreateClick
+            )
 
-            // Top toolbar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(XpertOrange)
-                    .padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+            AppListSearchBar(
+                placeholder = "Search Subscriptions",
+                onClick = onSearchClick,
+                modifier = Modifier.padding(
+                    start = 15.dp,
+                    end = 15.dp,
+                    top = 14.dp,
+                    bottom = 8.dp
+                )
+            )
 
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "My Subscriptions",
-                        color = White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-                }
+            // Loading, error, empty state, or subscription list.
+            when {
+                uiState.isLoading &&
+                        uiState.subscriptions.isEmpty() -> {
 
-                Box(
-                    modifier = Modifier
-                        .width(68.dp)
-                        .fillMaxHeight()
-                        .clickable(onClick = onCreateClick),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Text(
-                        text = "Create",
-                        color = White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            // Main content
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(White)
-            ) {
-
-                // Entire search bar opens SearchSubscriptionScreen.
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = 18.dp,
-                            end = 18.dp,
-                            top = 18.dp,
-                            bottom = 14.dp
-                        )
-                        .height(54.dp)
-                        .clickable(
-                            onClick = onSearchClick
-                        ),
-                    shape = RoundedCornerShape(28.dp),
-                    color = White,
-                    border = BorderStroke(
-                        width = 1.5.dp,
-                        color = Color.Gray
-                    )
-                ) {
-                    Row(
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 18.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = XpertOrange
+                        )
+                    }
+                }
+
+                uiState.errorMessage != null -> {
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "Search Subscriptions",
-                            modifier = Modifier.weight(1f),
-                            color = TextGray,
-                            fontSize = 18.sp
+                            text = uiState.errorMessage
+                                ?: "Unable to load subscriptions",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp
                         )
 
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Open Search Subscriptions",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(27.dp)
+                        Spacer(
+                            modifier = Modifier.height(12.dp)
+                        )
+
+                        Text(
+                            text = "Retry",
+                            color = XpertOrange,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable {
+                                viewModel.loadSubscriptions(
+                                    userId = userId,
+                                    sessionId = sessionId,
+                                    applicationId = "0",
+                                    searchName = "",
+                                    searchActive = 2
+                                )
+                            }
                         )
                     }
                 }
 
-                // Loading, error, empty and subscription-list states.
-                when {
-                    uiState.isLoading && uiState.subscriptions.isEmpty() -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = XpertOrange
+                uiState.subscriptions.isEmpty() -> {
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Text(
+                            text = "No subscriptions found",
+                            color = TextGray,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(
+                                top = 24.dp
                             )
-                        }
+                        )
                     }
+                }
 
-                    uiState.errorMessage != null -> {
+                else -> {
 
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(
+                            bottom = 12.dp
+                        )
+                    ) {
+                        items(
+                            items = uiState.subscriptions,
+                            key = { subscription ->
+                                subscription.userSubId.toString()
+                            }
+                        ) { subscription ->
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = uiState.errorMessage
-                                    ?: "Unable to load subscriptions",
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 14.sp
-                            )
-
-                            Spacer(
-                                modifier = Modifier.height(12.dp)
-                            )
-
-                            Text(
-                                text = "Retry",
-                                color = XpertOrange,
-                                fontSize = 15.sp,
-                                modifier = Modifier.clickable {
-                                    viewModel.loadSubscriptions(
-                                        userId = userId,
-                                        sessionId = sessionId,
-                                        applicationId = "0",
-                                        searchName = "",
-                                        searchActive = 2
+                            SubscriptionRow(
+                                subscription = subscription,
+                                onClick = {
+                                    onEditClick(
+                                        subscription.userSubId.toString()
                                     )
                                 }
                             )
-                        }
-                    }
-
-                    uiState.subscriptions.isEmpty() -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            Text(
-                                text = "No subscriptions found",
-                                color = TextGray,
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(top = 24.dp)
-                            )
-                        }
-                    }
-
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentPadding = PaddingValues(
-                                bottom = 12.dp
-                            )
-                        ) {
-                            items(
-                                items = uiState.subscriptions,
-                                key = { it.userSubId.toString() }
-                            ) { subscription ->
-                                SubscriptionRow(
-                                    subscription = subscription,
-                                    onClick = {
-                                        onEditClick(
-                                            subscription.userSubId.toString()
-                                        )
-                                    }
-                                )
-                            }
                         }
                     }
                 }
@@ -286,6 +218,10 @@ fun SubscriptionsScreen(
         }
     }
 }
+
+// ------------------------------------------------------------
+// SUBSCRIPTION ROW
+// ------------------------------------------------------------
 
 @Composable
 private fun SubscriptionRow(
@@ -314,8 +250,8 @@ private fun SubscriptionRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 58.dp)
-                .padding(vertical = 8.dp),
+                .defaultMinSize(minHeight = 66.dp)
+                .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
@@ -323,14 +259,14 @@ private fun SubscriptionRow(
             ) {
                 Text(
                     text = alertName,
-                    color = Color(0xFF555555),
+                    color = TextGray,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
                     maxLines = 2
                 )
 
                 Spacer(
-                    modifier = Modifier.height(2.dp)
+                    modifier = Modifier.height(4.dp)
                 )
 
                 Text(
@@ -361,7 +297,10 @@ private fun SubscriptionRow(
     }
 }
 
-// Preview only: sample rows are not used by the real API screen.
+// ------------------------------------------------------------
+// PREVIEW
+// ------------------------------------------------------------
+
 @Preview(
     name = "XpertAlerts - My Subscriptions",
     showBackground = true,
@@ -371,172 +310,117 @@ private fun SubscriptionRow(
 @Composable
 private fun SubscriptionsScreenPreview() {
     XpertAlertsTheme {
-        SubscriptionLayoutPreview(
-            onSearchClick = {}
-        )
+        SubscriptionLayoutPreview()
     }
 }
 
 @Composable
-private fun SubscriptionLayoutPreview(
-    onSearchClick: () -> Unit
-) {
+private fun SubscriptionLayoutPreview() {
+    val previewRows = listOf(
+        "Caterxpert - alcohol_change_request_0_30" to "CaterXpert",
+        "CaterXpert - Alcohol_Change_Request_0_30" to "CaterXpert",
+        "Caterxpert - broadcast email" to "CaterXpert",
+        "CaterXpert - Database Alert" to "CaterXpert",
+        "CaterXpert - Server Alert" to "CaterXpert",
+        "CaterXpert - Network Alert" to "CaterXpert",
+        "CaterXpert - Application Alert" to "CaterXpert",
+        "CaterXpert - System Monitoring" to "CaterXpert"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(White)
+            .background(AppBackground)
     ) {
-        // Toolbar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .background(XpertOrange)
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = White,
-                modifier = Modifier.size(28.dp)
-            )
-
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "My Subscriptions",
-                    color = White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .width(64.dp)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Text(
-                    text = "Create",
-                    color = White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // Entire preview search bar is clickable.
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    start = 18.dp,
-                    end = 18.dp,
-                    top = 18.dp,
-                    bottom = 18.dp
-                )
-                .height(62.dp)
-                .clickable(onClick = onSearchClick),
-            shape = RoundedCornerShape(28.dp),
-            color = White,
-            border = BorderStroke(
-                width = 1.5.dp,
-                color = XpertPurple
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Search Subscriptions",
-                    modifier = Modifier.weight(1f),
-                    color = TextGray,
-                    fontSize = 18.sp
-                )
-
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Subscriptions",
-                    tint = XpertPurple,
-                    modifier = Modifier.size(27.dp)
-                )
-            }
-        }
-
-        val previewRows = listOf(
-            "Caterxpert - alcohol_change_request_0_30" to "CaterXpert",
-            "CaterXpert - Alcohol_Change_Request_0_30" to "CaterXpert",
-            "Caterxpert - broadcast email" to "CaterXpert",
-            "CaterXpert - Database Alert" to "CaterXpert",
-            "CaterXpert - Server Alert" to "CaterXpert",
-            "CaterXpert - Network Alert" to "CaterXpert",
-            "CaterXpert - Application Alert" to "CaterXpert",
-            "CaterXpert - System Monitoring" to "CaterXpert"
+        AppTopBar(
+            title = "My Subscriptions",
+            onBackClick = {},
+            trailingActionText = "Create",
+            onTrailingActionClick = {}
         )
 
-        LazyColumn(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(White),
-            contentPadding = PaddingValues(bottom = 16.dp)
+                .fillMaxSize()
+                .background(White)
         ) {
-            items(previewRows) { row ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 26.dp, end = 12.dp)
-                ) {
-                    Row(
+            AppListSearchBar(
+                placeholder = "Search Subscriptions",
+                onClick = {},
+                modifier = Modifier.padding(
+                    start = 15.dp,
+                    end = 15.dp,
+                    top = 14.dp,
+                    bottom = 8.dp
+                )
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(White),
+                contentPadding = PaddingValues(
+                    bottom = 12.dp
+                )
+            ) {
+                items(previewRows) { row ->
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .defaultMinSize(minHeight = 66.dp)
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = row.first,
-                                color = Color(0xFF555555),
-                                fontSize = 14.sp,
-                                lineHeight = 19.sp
+                            .padding(
+                                start = 26.dp,
+                                end = 12.dp
                             )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 66.dp)
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = row.first,
+                                    color = TextGray,
+                                    fontSize = 14.sp,
+                                    lineHeight = 19.sp,
+                                    maxLines = 2
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.height(4.dp)
+                                )
+
+                                Text(
+                                    text = row.second,
+                                    color = TextGray,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    maxLines = 1
+                                )
+                            }
 
                             Spacer(
-                                modifier = Modifier.height(4.dp)
+                                modifier = Modifier.width(8.dp)
                             )
 
                             Text(
-                                text = row.second,
+                                text = "›",
                                 color = TextGray,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp
+                                fontSize = 28.sp,
+                                lineHeight = 28.sp
                             )
                         }
 
-                        Text(
-                            text = "›",
-                            color = TextGray,
-                            fontSize = 30.sp,
-                            lineHeight = 30.sp,
-                            modifier = Modifier.padding(start = 8.dp)
+                        HorizontalDivider(
+                            color = TextGray.copy(alpha = 0.20f),
+                            thickness = 1.dp
                         )
                     }
-
-                    HorizontalDivider(
-                        color = TextGray.copy(alpha = 0.20f),
-                        thickness = 1.dp
-                    )
                 }
             }
         }

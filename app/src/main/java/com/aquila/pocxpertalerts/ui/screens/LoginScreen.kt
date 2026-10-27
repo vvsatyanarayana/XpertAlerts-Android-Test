@@ -3,36 +3,25 @@ package com.aquila.pocxpertalerts.ui.screens
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,17 +39,12 @@ import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.viewmodel.LoginViewModel
 import com.aquila.pocxpertalerts.viewmodel.LoginViewModelFactory
-import androidx.compose.ui.graphics.Color
+
 @Composable
 fun LoginScreen(
     onLoginSuccess: (User) -> Unit,
     onSettingsClick: () -> Unit
 ) {
-
-    // =========================================================
-    // VIEWMODEL
-    // =========================================================
-
     val context = LocalContext.current.applicationContext
 
     val settingsDataStore = remember(context) {
@@ -71,556 +55,393 @@ fun LoginScreen(
         LoginViewModelFactory(settingsDataStore)
     }
 
-    val viewModel: LoginViewModel = viewModel(
+    val loginViewModel: LoginViewModel = viewModel(
         factory = loginFactory
     )
 
-    val uiState by viewModel.uiState.collectAsState()
-
-
-    // =========================================================
-    // ANDROID CONTEXT
-    // =========================================================
-
-
-    // =========================================================
-    // DEVICE ID
-    // =========================================================
+    val uiState by loginViewModel.uiState.collectAsState()
 
     val deviceId = remember {
-
         Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ANDROID_ID
-        )
+        ).orEmpty()
     }
-
-
-    // =========================================================
-    // PASSWORD VISIBILITY
-    // =========================================================
-
-    var passwordVisible by remember {
-        mutableStateOf(false)
-    }
-
-
-    // =========================================================
-    // LOGIN SUCCESS
-    // =========================================================
 
     LaunchedEffect(uiState.loginSuccess) {
         if (uiState.loginSuccess) {
             uiState.user?.let { user ->
                 onLoginSuccess(user)
             }
-            viewModel.clearLoginSuccess()
+
+            loginViewModel.clearLoginSuccess()
         }
     }
 
-    // =========================================================
-    // ROOT
-    // =========================================================
+    LoginScreenContent(
+        userId = uiState.userId,
+        password = uiState.password,
+        userIdError = uiState.userIdError,
+        passwordError = uiState.passwordError,
+        errorMessage = uiState.errorMessage,
+        successMessage = uiState.successMessage,
+        isLoading = uiState.isLoading,
+        onUserIdChange = loginViewModel::updateUserId,
+        onPasswordChange = loginViewModel::updatePassword,
+        onLoginClick = {
+            loginViewModel.login(deviceId = deviceId)
+        },
+        onSettingsClick = onSettingsClick
+    )
+}
 
-    Box(
+@Composable
+private fun LoginScreenContent(
+    userId: String,
+    password: String,
+    userIdError: String?,
+    passwordError: String?,
+    errorMessage: String?,
+    successMessage: String?,
+    isLoading: Boolean,
+    onUserIdChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLoginClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    var passwordVisible by remember {
+        mutableStateOf(false)
+    }
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(AppBackground)
     ) {
+        val compactScreen = maxHeight < 700.dp
+
+        val logoHeight = if (compactScreen) {
+            112.dp
+        } else {
+            150.dp
+        }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp),
-
-            horizontalAlignment =
-                Alignment.CenterHorizontally
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    horizontal = 20.dp,
+                    vertical = 8.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-
-            // =================================================
-            // SETTINGS
-            // =================================================
-
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(
-                        top = 56.dp,
-                        end = 14.dp
-                    ),
-
-                horizontalArrangement =
-                    Arrangement.End
+                    .widthIn(max = 440.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(60.dp)
-                ) {
-
-                    Image(
-                        painter = painterResource(
-                            id = R.drawable.gear
-                        ),
-
-                        contentDescription =
-                            "Settings",
-
-                        modifier =
-                            Modifier.size(33.dp)
-                    )
-                }
-            }
-
-
-            // =================================================
-            // LOGO
-            // =================================================
-
-            Spacer(
-                modifier =
-                    Modifier.height(35.dp)
-            )
-
-            Image(
-                painter = painterResource(
-                    id =
-                        R.drawable.xpertalerts_splash_logo
-                ),
-
-                contentDescription =
-                    "Xpert Alerts Logo",
-
-                modifier = Modifier
-                    .width(400.dp)
-                    .height(180.dp),
-
-                contentScale =
-                    ContentScale.Fit
-            )
-
-
-            // =================================================
-            // SPACE AFTER LOGO
-            // =================================================
-
-            Spacer(
-                modifier =
-                    Modifier.height(25.dp)
-            )
-
-
-            // =================================================
-            // USER ID
-            // =================================================
-
-            OutlinedTextField(
-
-                value =
-                    uiState.userId,
-
-                onValueChange = {
-                    viewModel.updateUserId(it)
-                },
-
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp),
-
-                singleLine = true,
-
-                placeholder = {
-
-                    Text(
-                        text = "User ID",
-                        fontSize = 12.sp,
-                        color = TextDark
-                    )
-                },
-
-                leadingIcon = {
-
-                    Image(
-                        painter = painterResource(
-                            id = R.drawable.user
-                        ),
-
-                        contentDescription =
-                            "User ID",
-
-                        modifier =
-                            Modifier.size(12.dp)
-                    )
-                },
-
-                isError =
-                    uiState.userIdError != null,
-
-                shape =
-                    RoundedCornerShape(25.dp),
-
-                colors =
-                    OutlinedTextFieldDefaults.colors(
-
-                        focusedBorderColor =
-                            BorderGray,
-
-                        unfocusedBorderColor =
-                            if (
-                                uiState.userIdError != null
-                            ) {
-                                androidx.compose.ui.graphics.Color.Red
-                            } else {
-                                BorderGray
-                            },
-
-                        errorBorderColor =
-                            androidx.compose.ui.graphics.Color.Red,
-
-                        focusedContainerColor =
-                            White,
-
-                        unfocusedContainerColor =
-                            White,
-
-                        errorContainerColor =
-                            White,
-
-                        cursorColor =
-                            XpertOrange
-                    )
-            )
-
-
-            // =================================================
-            // USER ID ERROR
-            // =================================================
-
-            if (uiState.userIdError != null) {
-
-                Text(
-                    text =
-                        uiState.userIdError!!,
-
-                    fontSize = 12.sp,
-
-                    color =
-                        androidx.compose.ui.graphics.Color.Red,
-
+                // Settings button
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 8.dp,
-                            top = 4.dp
-                        )
-                )
-            }
-
-
-            // =================================================
-            // SPACE
-            // =================================================
-
-            Spacer(
-                modifier =
-                    Modifier.height(8.dp)
-            )
-
-
-            // =================================================
-            // PASSWORD
-            // =================================================
-
-            OutlinedTextField(
-
-                value =
-                    uiState.password,
-
-                onValueChange = {
-                    viewModel.updatePassword(it)
-                },
-
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp),
-
-                singleLine = true,
-
-                placeholder = {
-
-                    Text(
-                        text = "Password",
-                        fontSize = 12.sp,
-                        color = TextDark
-                    )
-                },
-
-                leadingIcon = {
-
-                    Image(
-                        painter = painterResource(
-                            id = R.drawable.lock
-                        ),
-
-                        contentDescription =
-                            "Password",
-
-                        modifier =
-                            Modifier.size(12.dp)
-                    )
-                },
-
-                trailingIcon = {
-
+                        .height(48.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(
-                        onClick = {
-
-                            passwordVisible =
-                                !passwordVisible
-                        }
+                        onClick = onSettingsClick,
+                        modifier = Modifier.size(44.dp)
                     ) {
-
                         Image(
                             painter = painterResource(
-                                id =
+                                R.drawable.gear
+                            ),
+                            contentDescription = "Settings",
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.height(
+                        if (compactScreen) 8.dp else 16.dp
+                    )
+                )
+
+                // Application logo
+                Image(
+                    painter = painterResource(
+                        R.drawable.xpertalerts_splash_logo
+                    ),
+                    contentDescription = "Xpert Alerts Logo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(logoHeight)
+                        .padding(horizontal = 8.dp),
+                    contentScale = ContentScale.Fit
+                )
+
+                Spacer(
+                    modifier = Modifier.height(
+                        if (compactScreen) 16.dp else 24.dp
+                    )
+                )
+
+                // User ID
+                OutlinedTextField(
+                    value = userId,
+                    onValueChange = onUserIdChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            text = "Enter User ID",
+                            fontSize = 14.sp,
+                            color = TextDark
+                        )
+                    },
+                    leadingIcon = {
+                        Image(
+                            painter = painterResource(
+                                R.drawable.user
+                            ),
+                            contentDescription = "User ID",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    isError = userIdError != null,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = loginTextFieldColors()
+                )
+
+                FieldMessage(
+                    message = userIdError,
+                    isError = true
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                // Password
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            text = "Enter Password",
+                            fontSize = 14.sp,
+                            color = TextDark
+                        )
+                    },
+                    leadingIcon = {
+                        Image(
+                            painter = painterResource(
+                                R.drawable.lock
+                            ),
+                            contentDescription = "Password",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                passwordVisible = !passwordVisible
+                            },
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(
                                     if (passwordVisible) {
                                         R.drawable.ic_eye_show
                                     } else {
                                         R.drawable.ic_eye_hide
                                     }
-                            ),
-
-                            contentDescription =
-                                if (passwordVisible) {
+                                ),
+                                contentDescription = if (passwordVisible) {
                                     "Hide password"
                                 } else {
                                     "Show password"
                                 },
-
-                            modifier =
-                                Modifier.size(20.dp)
-                        )
-                    }
-                },
-
-                visualTransformation =
-                    if (passwordVisible) {
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible) {
                         VisualTransformation.None
                     } else {
                         PasswordVisualTransformation()
                     },
+                    isError = passwordError != null,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = loginTextFieldColors()
+                )
 
-                isError =
-                    uiState.passwordError != null,
+                FieldMessage(
+                    message = passwordError,
+                    isError = true
+                )
 
-                shape =
-                    RoundedCornerShape(25.dp),
+                FieldMessage(
+                    message = errorMessage,
+                    isError = true
+                )
 
-                colors =
-                    OutlinedTextFieldDefaults.colors(
+                FieldMessage(
+                    message = successMessage,
+                    isError = false
+                )
 
-                        focusedBorderColor =
-                            BorderGray,
-
-                        unfocusedBorderColor =
-                            if (
-                                uiState.passwordError != null
-                            ) {
-                                androidx.compose.ui.graphics.Color.Red
-                            } else {
-                                BorderGray
-                            },
-
-                        errorBorderColor =
-                            androidx.compose.ui.graphics.Color.Red,
-
-                        focusedContainerColor =
-                            White,
-
-                        unfocusedContainerColor =
-                            White,
-
-                        errorContainerColor =
-                            White,
-
-                        cursorColor =
-                            XpertOrange
+                Spacer(
+                    modifier = Modifier.height(
+                        if (compactScreen) 20.dp else 28.dp
                     )
-            )
+                )
 
-
-            // =================================================
-            // PASSWORD ERROR
-            // =================================================
-
-            if (uiState.passwordError != null) {
-
-                Text(
-                    text =
-                        uiState.passwordError!!,
-
-                    fontSize = 12.sp,
-
-                    color =
-                        androidx.compose.ui.graphics.Color.Red,
-
+                // Login button
+                Button(
+                    onClick = onLoginClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = 8.dp,
-                            top = 4.dp
-                        )
-                )
-            }
-
-
-            // =================================================
-            // SERVER ERROR
-            // =================================================
-
-
-            // LOGIN ERROR
-            if (uiState.errorMessage != null) {
-                Text(
-                    text = uiState.errorMessage.orEmpty(),
-                    fontSize = 12.sp,
-                    color = Color(0xFFD32F2F),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = 8.dp,
-                            top = 8.dp
-                        )
-                )
-            }
-
-            // LOGIN SUCCESS MESSAGE
-            if (uiState.successMessage != null) {
-                Text(
-                    text = uiState.successMessage.orEmpty(),
-                    fontSize = 13.sp,
-                    color = Color(0xFF218838),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = 8.dp,
-                            top = 8.dp
-                        )
-                )
-            }
-
-
-
-            // =================================================
-            // SPACE BEFORE LOGIN
-            // =================================================
-
-            Spacer(
-                modifier =
-                    Modifier.height(34.dp)
-            )
-
-
-            // =================================================
-            // LOGIN BUTTON
-            // =================================================
-
-            Button(
-
-                onClick = {
-
-                    viewModel.login(
-                        deviceId = deviceId
-                    )
-                },
-
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-
-                shape =
-                    RoundedCornerShape(20.dp),
-
-                enabled =
-                    !uiState.isLoading,
-
-                colors =
-                    ButtonDefaults.buttonColors(
-
-                        containerColor =
-                            XpertOrange,
-
-                        contentColor =
-                            White,
-
+                        .height(52.dp),
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = XpertOrange,
+                        contentColor = White,
                         disabledContainerColor =
-                            XpertOrange.copy(
-                                alpha = 0.6f
-                            ),
-
-                        disabledContentColor =
-                            White
+                            XpertOrange.copy(alpha = 0.65f),
+                        disabledContentColor = White
                     )
-            ) {
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = White,
+                            strokeWidth = 2.dp
+                        )
 
+                        Spacer(Modifier.width(10.dp))
+
+                        Text(
+                            text = "Logging in…",
+                            fontSize = 16.sp
+                        )
+                    } else {
+                        Text(
+                            text = "Login",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(28.dp))
+
+                // Application version
                 Text(
-                    text =
-                        if (uiState.isLoading) {
-                            "Logging in..."
-                        } else {
-                            "Login"
-                        },
-
-                    fontSize = 16.sp
+                    text = "App Version : v1.6",
+                    fontSize = 13.sp,
+                    color = TextDark
                 )
+
+                Spacer(Modifier.height(12.dp))
             }
-
-
-            // =================================================
-            // SPACE BEFORE VERSION
-            // =================================================
-
-            Spacer(
-                modifier =
-                    Modifier.height(75.dp)
-            )
-
-
-            // =================================================
-            // VERSION
-            // =================================================
-
-            Text(
-                text =
-                    "App Version : v1.6",
-
-                fontSize = 14.sp,
-
-                color =
-                    TextDark
-            )
         }
     }
 }
 
+@Composable
+private fun loginTextFieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = XpertOrange,
+        unfocusedBorderColor = BorderGray,
+        errorBorderColor = Color(0xFFD32F2F),
+        focusedContainerColor = White,
+        unfocusedContainerColor = White,
+        errorContainerColor = White,
+        cursorColor = XpertOrange
+    )
 
-// =============================================================
-// PREVIEW
-// =============================================================
+@Composable
+private fun FieldMessage(
+    message: String?,
+    isError: Boolean
+) {
+    if (!message.isNullOrBlank()) {
+        Text(
+            text = message,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 12.dp,
+                    top = 4.dp,
+                    end = 4.dp
+                ),
+            fontSize = 12.sp,
+            color = if (isError) {
+                Color(0xFFD32F2F)
+            } else {
+                Color(0xFF218838)
+            }
+        )
+    }
+}
 
+// Preview: Standard mobile
 @Preview(
+    name = "Login - Phone",
     showBackground = true,
     showSystemUi = true,
-
+    device = "spec:width=393dp,height=852dp,dpi=440"
 )
 @Composable
-fun LoginScreenPreview() {
-
+private fun LoginScreenPhonePreview() {
     XpertAlertsTheme {
+        LoginScreenContent(
+            userId = "",
+            password = "",
+            userIdError = null,
+            passwordError = null,
+            errorMessage = null,
+            successMessage = null,
+            isLoading = false,
+            onUserIdChange = {},
+            onPasswordChange = {},
+            onLoginClick = {},
+            onSettingsClick = {}
+        )
+    }
+}
 
-        LoginScreen(
-            onLoginSuccess = { _ -> },
+// Preview: Small mobile
+@Preview(
+    name = "Login - Small Phone",
+    showBackground = true,
+    device = "spec:width=320dp,height=640dp,dpi=320"
+)
+@Composable
+private fun LoginScreenSmallPhonePreview() {
+    XpertAlertsTheme {
+        LoginScreenContent(
+            userId = "demo.user",
+            password = "password",
+            userIdError = null,
+            passwordError = null,
+            errorMessage = null,
+            successMessage = null,
+            isLoading = false,
+            onUserIdChange = {},
+            onPasswordChange = {},
+            onLoginClick = {},
             onSettingsClick = {}
         )
     }
