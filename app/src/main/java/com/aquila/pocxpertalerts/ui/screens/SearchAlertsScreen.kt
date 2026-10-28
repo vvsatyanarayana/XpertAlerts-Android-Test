@@ -1,6 +1,7 @@
 package com.aquila.pocxpertalerts.ui.screens
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,7 +40,10 @@ import com.aquila.pocxpertalerts.ui.theme.PlaceholderColor
 import com.aquila.pocxpertalerts.ui.theme.SearchBorderColor
 import com.aquila.pocxpertalerts.ui.theme.SearchFieldBackground
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModel
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import androidx.compose.foundation.layout.heightIn
 import com.aquila.pocxpertalerts.ui.components.SearchScreenTopBar
@@ -96,6 +100,10 @@ fun SearchAlertsScreen(
         SearchAlertsPersistence(context)
     }
 
+    // Match the legacy app defaults: start date is three days ago, end date is today.
+    val defaultStartDate = remember(userId) { formatSearchDate(daysFromToday = -3) }
+    val defaultEndDate = remember(userId) { formatSearchDate(daysFromToday = 0) }
+
     // Restore saved filters for the current user.
     val initialFilters = remember(userId) {
         searchPersistence.loadFilters(userId)
@@ -106,11 +114,11 @@ fun SearchAlertsScreen(
     }
 
     var startDate by rememberSaveable(userId) {
-        mutableStateOf(initialFilters.startDate)
+        mutableStateOf(initialFilters.startDate.ifBlank { defaultStartDate })
     }
 
     var endDate by rememberSaveable(userId) {
-        mutableStateOf(initialFilters.endDate)
+        mutableStateOf(initialFilters.endDate.ifBlank { defaultEndDate })
     }
 
     var viewBy by rememberSaveable(userId) {
@@ -168,8 +176,8 @@ fun SearchAlertsScreen(
 
     fun resetSearch() {
         keyword = ""
-        startDate = ""
-        endDate = ""
+        startDate = defaultStartDate
+        endDate = defaultEndDate
         viewBy = "- Select -"
         applicationName = "- Select Application -"
         applicationId = ""
@@ -387,9 +395,37 @@ fun SearchAlertsScreen(
 
             Button(
                 onClick = {
+                    // The legacy app requires both dates and rejects invalid or reversed ranges.
+                    if (startDate.isBlank()) {
+                        Toast.makeText(context, "Start Date cannot be empty", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    val parsedStartDate = parseSearchDate(startDate)
+                    if (parsedStartDate == null) {
+                        Toast.makeText(context, "Start Date is invalid", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (endDate.isBlank()) {
+                        Toast.makeText(context, "End Date cannot be empty", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    val parsedEndDate = parseSearchDate(endDate)
+                    if (parsedEndDate == null) {
+                        Toast.makeText(context, "End Date is invalid", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (parsedStartDate.after(parsedEndDate)) {
+                        Toast.makeText(
+                            context,
+                            "Start Date cannot be greater than End Date",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@Button
+                    }
+
                     onSearchClick(
-                        startDate,
-                        endDate,
+                        formatApiDate(parsedStartDate),
+                        formatApiDate(parsedEndDate),
                         keyword.trim(),
                         when (viewBy) {
                             "Alert Definition" -> "1"
@@ -453,6 +489,30 @@ fun SearchAlertsScreen(
         }
     }
 }
+
+// ============================================================
+// SEARCH DATE HELPERS
+// ============================================================
+
+private fun formatSearchDate(daysFromToday: Int): String {
+    val calendar = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, daysFromToday)
+    }
+    return SimpleDateFormat("MM/dd/yyyy", Locale.US).format(calendar.time)
+}
+
+private fun parseSearchDate(value: String): Date? {
+    val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.US).apply {
+        isLenient = false
+    }
+    val position = ParsePosition(0)
+    val parsed = formatter.parse(value, position)
+    return parsed?.takeIf { position.index == value.length }
+}
+
+// The legacy getAlertsForDevices API receives dates as MM-dd-yyyy.
+private fun formatApiDate(date: Date): String =
+    SimpleDateFormat("MM-dd-yyyy", Locale.US).format(date)
 
 // ============================================================
 // FORM LABEL

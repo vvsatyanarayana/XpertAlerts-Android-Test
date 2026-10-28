@@ -52,7 +52,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.TextButton
 import com.aquila.pocxpertalerts.ui.theme.ToolbarBackground
 import com.aquila.pocxpertalerts.ui.theme.ToolbarIconColor
 import com.aquila.pocxpertalerts.ui.theme.SearchIconColor
@@ -70,7 +72,8 @@ fun AppTopBar(
     modifier: Modifier = Modifier,
     onResetClick: (() -> Unit)? = null,
     trailingActionText: String? = null,
-    onTrailingActionClick: (() -> Unit)? = null
+    onTrailingActionClick: (() -> Unit)? = null,
+    onMoreClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -117,12 +120,23 @@ fun AppTopBar(
                 )
             }
 
+
             // Right action
             Box(
                 modifier = Modifier.width(56.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 when {
+                    onMoreClick != null -> {
+                        IconButton(onClick = onMoreClick) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More options",
+                                tint = ToolbarIconColor
+                            )
+                        }
+                    }
+
                     trailingActionText != null &&
                             onTrailingActionClick != null -> {
                         Text(
@@ -167,6 +181,7 @@ fun AppTopBar(
                     }
                 }
             }
+
         }
     }
 }

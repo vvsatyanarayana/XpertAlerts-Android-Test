@@ -19,12 +19,15 @@ class SettingsDataStore(
         private val WEB_SERVICE_URL =
             stringPreferencesKey("web_service_url")
 
-        const val DEFAULT_URL = ""
+        const val DEFAULT_URL =
+            "https://testapps.aquilasoftware.com/ams/webservice/"
     }
 
     val webServiceUrl: Flow<String> =
         context.settingsDataStore.data.map { preferences ->
-            preferences[WEB_SERVICE_URL] ?: DEFAULT_URL
+            preferences[WEB_SERVICE_URL]
+                ?.takeIf { it.isNotBlank() }
+                ?: DEFAULT_URL
         }
 
     suspend fun saveWebServiceUrl(url: String) {

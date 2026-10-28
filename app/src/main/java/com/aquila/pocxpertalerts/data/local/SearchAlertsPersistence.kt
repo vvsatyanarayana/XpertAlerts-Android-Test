@@ -8,8 +8,8 @@ import com.google.gson.reflect.TypeToken
 
 data class SavedAlertSearchFilters(
     val keyword: String = "",
-    val startDate: String = "10/09/2026",
-    val endDate: String = "10/12/2026",
+    val startDate: String = "",
+    val endDate: String = "",
     val viewBy: String = "- Select -",
     val applicationName: String = "- Select Application -",
     val applicationId: String = "",

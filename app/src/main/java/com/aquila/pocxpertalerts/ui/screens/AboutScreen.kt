@@ -47,7 +47,7 @@ fun AboutScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(49.dp)
+                    .height(79.dp)
                     .background(XpertOrange),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center

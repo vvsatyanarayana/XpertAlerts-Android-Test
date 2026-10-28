@@ -38,6 +38,7 @@ object RetrofitClient {
 
         // Preserve the existing SSL configuration.
         val client = UnsafeSslHelper.okHttpClient.newBuilder()
+            .addInterceptor(SessionExpirationInterceptor())
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)

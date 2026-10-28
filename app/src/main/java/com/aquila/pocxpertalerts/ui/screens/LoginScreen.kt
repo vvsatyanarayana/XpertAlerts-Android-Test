@@ -132,8 +132,8 @@ private fun LoginScreenContent(
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(
-                    horizontal = 20.dp,
-                    vertical = 8.dp
+                    horizontal = 32.dp,
+                    vertical = 38.dp
                 ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -161,7 +161,7 @@ private fun LoginScreenContent(
                                 R.drawable.gear
                             ),
                             contentDescription = "Settings",
-                            modifier = Modifier.size(25.dp)
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }

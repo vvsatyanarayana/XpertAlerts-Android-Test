@@ -2,6 +2,7 @@
 package com.aquila.pocxpertalerts.navigation
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -42,6 +43,7 @@ import com.aquila.pocxpertalerts.viewmodel.AlertsViewModel
 import com.aquila.pocxpertalerts.viewmodel.AlertsViewModelFactory
 import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
 import com.aquila.pocxpertalerts.data.remote.RetrofitClient
+import com.aquila.pocxpertalerts.data.remote.SessionExpirationManager
 import com.aquila.pocxpertalerts.data.repository.SubscriptionRepositoryImpl
 import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsRepository
 import com.aquila.pocxpertalerts.viewmodel.ArchivedAlertsViewModel
@@ -60,6 +62,9 @@ import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsCache
 import com.aquila.pocxpertalerts.data.repository.ArchivedSearchPreferences
 
 import androidx.compose.runtime.rememberCoroutineScope
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 import com.aquila.pocxpertalerts.data.repository.ArchivedDynamicAction
 import com.aquila.pocxpertalerts.data.repository.ChangePasswordRepository
@@ -110,6 +115,20 @@ data class ForwardSearchCriteria(
     val email: String = "",
     val active: Int = 1
 )
+
+private data class AlertRefreshCriteria(
+    val startDate: String,
+    val endDate: String,
+    val keyword: String = "",
+    val viewByFlag: String = "0",
+    val applicationId: String = "0",
+    val alertDefinitionId: String = "0"
+)
+
+private fun defaultAlertApiDate(daysFromToday: Int): String =
+    SimpleDateFormat("MM-dd-yyyy", Locale.US).format(
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, daysFromToday) }.time
+    )
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
@@ -144,6 +163,21 @@ fun AppNavigation() {
 
     val searchPersistence = remember(appContext) {
         SearchAlertsPersistence(appContext)
+    }
+
+    // Shared ViewModel lets Home refresh the same alert query used by Search Alerts.
+    val settingsDataStore = remember(appContext) { SettingsDataStore(appContext) }
+    val alertsFactory = remember(settingsDataStore) { AlertsViewModelFactory(settingsDataStore) }
+    val alertsViewModel: AlertsViewModel = viewModel(factory = alertsFactory)
+    val alertsLoading by alertsViewModel.isLoading.collectAsState()
+    val alertsError by alertsViewModel.errorMessage.collectAsState()
+    var lastAlertRefreshCriteria by remember {
+        mutableStateOf(
+            AlertRefreshCriteria(
+                startDate = defaultAlertApiDate(-3),
+                endDate = defaultAlertApiDate(0)
+            )
+        )
     }
 
     var loggedInUser by remember {
@@ -197,7 +231,30 @@ fun AppNavigation() {
         mutableStateOf(false)
     }
 
-
+    // Observe session-expired events from every API request in one place.
+    LaunchedEffect(navController) {
+        SessionExpirationManager.events.collect {
+            // Ignore 401/412 responses that occur while the user is already at Login
+            // (for example, an invalid login attempt).
+            if (loggedInUser != null) {
+                loggedInUser = null
+                selectedAlert = null
+                selectedArchivedAlert = null
+                selectedForwardAlert = null
+                pendingDeleteAction = null
+                showDeleteConfirmation = false
+                Toast.makeText(
+                    appContext,
+                    "Your session has expired. Please sign in again.",
+                    Toast.LENGTH_LONG
+                ).show()
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -212,6 +269,8 @@ fun AppNavigation() {
             composable(Screen.Login.route) {
                 LoginScreen(
                     onLoginSuccess = { user ->
+                        // Start a fresh expiration cycle only after successful authentication.
+                        SessionExpirationManager.resetForNewSession()
                         loggedInUser = user
 
 
@@ -240,8 +299,102 @@ fun AppNavigation() {
             // ----------------------------------------------------
 
             composable(Screen.Home.route) {
+                // Fetch fresh alerts automatically when a user first enters Home after login.
+                // The effect is keyed to the authenticated user/session so recomposition does
+                // not trigger duplicate requests, and it does not refetch when returning from
+                // Search Alerts with the same session.
+                val homeUser = loggedInUser
+                LaunchedEffect(homeUser?.id, homeUser?.sessionId) {
+                    val currentUser = homeUser
+                    if (
+                        currentUser != null &&
+                        currentUser.id.toString().isNotBlank() &&
+                        !currentUser.sessionId.isNullOrBlank()
+                    ) {
+                        val criteria = lastAlertRefreshCriteria
+                        alertsViewModel.searchAlerts(
+                            userId = currentUser.id.toString(),
+                            startDate = criteria.startDate,
+                            endDate = criteria.endDate,
+                            keyword = criteria.keyword,
+                            viewByFlag = criteria.viewByFlag,
+                            applicationId = criteria.applicationId,
+                            alertDefinitionId = criteria.alertDefinitionId,
+                            sessionId = currentUser.sessionId.orEmpty(),
+                            onSuccess = { freshAlerts ->
+                                searchedAlerts = freshAlerts
+                                searchPersistence.saveAlerts(
+                                    userId = currentUser.id.toString(),
+                                    alerts = freshAlerts
+                                )
+                            }
+                        )
+                    }
+                }
+
                 HomeScreen(
                     alerts = searchedAlerts,
+                    userId = loggedInUser?.id?.toString().orEmpty(),
+                    sessionId = loggedInUser?.sessionId.orEmpty(),
+                    isRefreshing = alertsLoading,
+                    alertsError = alertsError,
+                    onRefreshClick = {
+                        val currentUser = loggedInUser
+                        if (currentUser != null) {
+                            val criteria = lastAlertRefreshCriteria
+                            alertsViewModel.searchAlerts(
+                                userId = currentUser.id.toString(),
+                                startDate = criteria.startDate,
+                                endDate = criteria.endDate,
+                                keyword = criteria.keyword,
+                                viewByFlag = criteria.viewByFlag,
+                                applicationId = criteria.applicationId,
+                                alertDefinitionId = criteria.alertDefinitionId,
+                                sessionId = currentUser.sessionId.orEmpty(),
+                                onSuccess = { refreshedAlerts ->
+                                    searchedAlerts = refreshedAlerts
+                                    searchPersistence.saveAlerts(
+                                        userId = currentUser.id.toString(),
+                                        alerts = refreshedAlerts
+                                    )
+                                }
+                            )
+                        }
+                    },
+                    onAlertsChanged = { updatedAlerts ->
+                        // Immediately reflect the successful action in the UI and cache.
+                        searchedAlerts = updatedAlerts
+                        val currentUser = loggedInUser
+                        currentUser?.id?.toString()?.let { currentUserId ->
+                            searchPersistence.saveAlerts(
+                                userId = currentUserId,
+                                alerts = updatedAlerts
+                            )
+                        }
+
+                        // Match the legacy Java app: reload alerts from the server after
+                        // a successful action so the list reflects the authoritative state.
+                        if (currentUser != null && !currentUser.sessionId.isNullOrBlank()) {
+                            val criteria = lastAlertRefreshCriteria
+                            alertsViewModel.searchAlerts(
+                                userId = currentUser.id.toString(),
+                                startDate = criteria.startDate,
+                                endDate = criteria.endDate,
+                                keyword = criteria.keyword,
+                                viewByFlag = criteria.viewByFlag,
+                                applicationId = criteria.applicationId,
+                                alertDefinitionId = criteria.alertDefinitionId,
+                                sessionId = currentUser.sessionId.orEmpty(),
+                                onSuccess = { refreshedAlerts ->
+                                    searchedAlerts = refreshedAlerts
+                                    searchPersistence.saveAlerts(
+                                        userId = currentUser.id.toString(),
+                                        alerts = refreshedAlerts
+                                    )
+                                }
+                            )
+                        }
+                    },
 
                     onAlertClick = { alertId ->
                         val alert = searchedAlerts.firstOrNull {
@@ -343,8 +496,26 @@ fun AppNavigation() {
                 if (alert != null) {
                     AlertDetailScreen(
                         alert = alert,
+                        userId = loggedInUser?.id?.toString().orEmpty(),
+                        sessionId = loggedInUser?.sessionId.orEmpty(),
                         onBackClick = {
                             navController.popBackStack()
+                        },
+                        onActionSuccess = {
+                            // Remove the successfully processed alert from Home's current list.
+                            searchedAlerts = searchedAlerts.filterNot { item ->
+                                item.id == alert.id ||
+                                        (item.alertId == alert.alertId &&
+                                                item.id == alert.id)
+                            }
+
+                            // Update the saved list for this user too.
+                            loggedInUser?.id?.toString()?.let { currentUserId ->
+                                searchPersistence.saveAlerts(
+                                    userId = currentUserId,
+                                    alerts = searchedAlerts
+                                )
+                            }
                         }
                     )
                 } else {
@@ -536,20 +707,6 @@ fun AppNavigation() {
 
             composable(Screen.SearchAlerts.route) {
                 val user = loggedInUser
-                val context = LocalContext.current.applicationContext
-
-                val settingsDataStore = remember(context) {
-                    SettingsDataStore(context)
-                }
-
-                val alertsFactory = remember(settingsDataStore) {
-                    AlertsViewModelFactory(settingsDataStore)
-                }
-
-                val alertsViewModel: AlertsViewModel = viewModel(
-                    factory = alertsFactory
-                )
-
                 SearchAlertsScreen(
                     alertsViewModel = alertsViewModel,
                     userId = user?.id?.toString().orEmpty(),
@@ -605,6 +762,14 @@ fun AppNavigation() {
                                 "No logged-in user is available"
                             )
                         } else {
+                            lastAlertRefreshCriteria = AlertRefreshCriteria(
+                                startDate = startDate,
+                                endDate = endDate,
+                                keyword = keyword,
+                                viewByFlag = viewBy,
+                                applicationId = application,
+                                alertDefinitionId = alertDefinition
+                            )
                             alertsViewModel.searchAlerts(
                                 userId = user.id.toString(),
                                 startDate = startDate,
@@ -1209,3 +1374,4 @@ fun AppNavigation() {
     }
 
 }
+
