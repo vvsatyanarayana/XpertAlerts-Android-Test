@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.LaunchedEffect
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
+import com.aquila.pocxpertalerts.data.local.UserSessionDataStore
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.domain.model.User
 import com.aquila.pocxpertalerts.ui.screens.AboutScreen
@@ -60,12 +61,11 @@ import com.aquila.pocxpertalerts.ui.screens.ForwardAlertEditDetails
 import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModel
 import com.aquila.pocxpertalerts.data.repository.ArchivedAlertsCache
 import com.aquila.pocxpertalerts.data.repository.ArchivedSearchPreferences
-
 import androidx.compose.runtime.rememberCoroutineScope
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-
+import kotlinx.coroutines.launch
 import com.aquila.pocxpertalerts.data.repository.ArchivedDynamicAction
 import com.aquila.pocxpertalerts.data.repository.ChangePasswordRepository
 import com.aquila.pocxpertalerts.viewmodel.ChangePasswordViewModel
@@ -167,14 +167,14 @@ fun AppNavigation() {
 
     // Shared ViewModel lets Home refresh the same alert query used by Search Alerts.
     val settingsDataStore = remember(appContext) { SettingsDataStore(appContext) }
+    val userSessionDataStore = remember(appContext) { UserSessionDataStore(appContext) }
     val alertsFactory = remember(settingsDataStore) { AlertsViewModelFactory(settingsDataStore) }
     val alertsViewModel: AlertsViewModel = viewModel(factory = alertsFactory)
     val alertsLoading by alertsViewModel.isLoading.collectAsState()
-    val alertsError by alertsViewModel.errorMessage.collectAsState()
     var lastAlertRefreshCriteria by remember {
         mutableStateOf(
             AlertRefreshCriteria(
-                startDate = defaultAlertApiDate(-3),
+                startDate = defaultAlertApiDate(-5),
                 endDate = defaultAlertApiDate(0)
             )
         )
@@ -204,6 +204,26 @@ fun AppNavigation() {
     val forwardFormState by forwardViewModel.formState.collectAsState()
 
     val forwardCreateState by forwardViewModel.createState.collectAsState()
+
+    // Restore the last valid session on process restart, matching the old app's local session behavior.
+    LaunchedEffect(Unit) {
+        if (loggedInUser == null) {
+            val savedUser = try {
+                userSessionDataStore.readUser()
+            } catch (_: Exception) {
+                null
+            }
+            if (savedUser != null && savedUser.pwdExpiryFlag == 0) {
+                loggedInUser = savedUser
+                searchedAlerts = searchPersistence.loadAlerts(savedUser.id.toString())
+                SessionExpirationManager.resetForNewSession()
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Login.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     var forwardSearchCriteria by remember {
         mutableStateOf(ForwardSearchCriteria())
@@ -238,6 +258,9 @@ fun AppNavigation() {
             // (for example, an invalid login attempt).
             if (loggedInUser != null) {
                 loggedInUser = null
+                scope.launch {
+                    try { userSessionDataStore.clear() } catch (_: Exception) { }
+                }
                 selectedAlert = null
                 selectedArchivedAlert = null
                 selectedForwardAlert = null
@@ -285,6 +308,14 @@ fun AppNavigation() {
                             popUpTo(Screen.Login.route) {
                                 inclusive = true
                             }
+                            launchSingleTop = true
+                        }
+                    },
+                    onPasswordExpired = { user ->
+                        // The legacy app redirects expired passwords to its reset screen.
+                        // Reuse the new app's validated Change Password screen with this authenticated user.
+                        loggedInUser = user
+                        navController.navigate(Screen.ChangePassword.route) {
                             launchSingleTop = true
                         }
                     },
@@ -337,7 +368,6 @@ fun AppNavigation() {
                     userId = loggedInUser?.id?.toString().orEmpty(),
                     sessionId = loggedInUser?.sessionId.orEmpty(),
                     isRefreshing = alertsLoading,
-                    alertsError = alertsError,
                     onRefreshClick = {
                         val currentUser = loggedInUser
                         if (currentUser != null) {
@@ -362,36 +392,11 @@ fun AppNavigation() {
                         }
                     },
                     onAlertsChanged = { updatedAlerts ->
-                        // Immediately reflect the successful action in the UI and cache.
                         searchedAlerts = updatedAlerts
-                        val currentUser = loggedInUser
-                        currentUser?.id?.toString()?.let { currentUserId ->
+                        loggedInUser?.id?.toString()?.let { currentUserId ->
                             searchPersistence.saveAlerts(
                                 userId = currentUserId,
                                 alerts = updatedAlerts
-                            )
-                        }
-
-                        // Match the legacy Java app: reload alerts from the server after
-                        // a successful action so the list reflects the authoritative state.
-                        if (currentUser != null && !currentUser.sessionId.isNullOrBlank()) {
-                            val criteria = lastAlertRefreshCriteria
-                            alertsViewModel.searchAlerts(
-                                userId = currentUser.id.toString(),
-                                startDate = criteria.startDate,
-                                endDate = criteria.endDate,
-                                keyword = criteria.keyword,
-                                viewByFlag = criteria.viewByFlag,
-                                applicationId = criteria.applicationId,
-                                alertDefinitionId = criteria.alertDefinitionId,
-                                sessionId = currentUser.sessionId.orEmpty(),
-                                onSuccess = { refreshedAlerts ->
-                                    searchedAlerts = refreshedAlerts
-                                    searchPersistence.saveAlerts(
-                                        userId = currentUser.id.toString(),
-                                        alerts = refreshedAlerts
-                                    )
-                                }
                             )
                         }
                     },
@@ -456,6 +461,9 @@ fun AppNavigation() {
 
                     onLogoutClick = {
                         loggedInUser = null
+                        scope.launch {
+                            try { userSessionDataStore.clear() } catch (_: Exception) { }
+                        }
                         selectedAlert = null
 
                         // Do not clear searchedAlerts or saved local data.
@@ -651,6 +659,17 @@ fun AppNavigation() {
 
                 val changePasswordState by
                 changePasswordViewModel.uiState.collectAsState()
+
+                LaunchedEffect(changePasswordState.isSuccess) {
+                    if (changePasswordState.isSuccess && user != null) {
+                        try { userSessionDataStore.saveUser(user) } catch (_: Exception) { }
+                        SessionExpirationManager.resetForNewSession()
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.ChangePassword.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                }
 
                 ChangePasswordScreen(
                     loginId = user?.loginId.orEmpty(),

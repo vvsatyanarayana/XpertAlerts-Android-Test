@@ -71,7 +71,9 @@ data class ArchivedAlertUi(
     val alertId: Int = 0,
     val aggregateAlertId: String = "",
     val alertDefId: Int = 0,
-    val applicationId: Long = 0L
+    val applicationId: Long = 0L,
+    // Server-provided section key; may be a date, application, or alert definition.
+    val groupBy: String = ""
 )
 
 // ------------------------------------------------------------
@@ -90,10 +92,12 @@ fun ArchivedAlertsScreen(
     onRetryClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {}
 ) {
-    // Preserve the original alert order while grouping by date.
+    // Match the legacy Java app: section headers are driven by the server's
+    // groupBy value (date, application, or alert definition depending on View By).
+    // Linked grouping preserves the order in which the API returned the alerts.
     val groupedAlerts = remember(alerts) {
         alerts.groupBy { alert ->
-            formatGroupDate(alert.date)
+            alert.groupBy.ifBlank { formatGroupDate(alert.date) }
         }
     }
 
@@ -224,7 +228,7 @@ fun ArchivedAlertsScreen(
                                 // Date header.
                                 item(key = "date_$dateHeader") {
                                     DateGroupHeader(
-                                        date = dateHeader
+                                        title = formatGroupHeader(dateHeader)
                                     )
                                 }
 
@@ -255,7 +259,7 @@ fun ArchivedAlertsScreen(
 
 @Composable
 private fun DateGroupHeader(
-    date: String
+    title: String
 ) {
     Box(
         modifier = Modifier
@@ -272,7 +276,7 @@ private fun DateGroupHeader(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = date,
+            text = title,
             color = White,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
@@ -459,6 +463,26 @@ private fun parseAlertDate(
     }
 
     return null
+}
+
+private fun formatGroupHeader(
+    rawGroupBy: String
+): String {
+    // The old RecyclerView adapter formatted date group headers as "d MMM".
+    // Non-date group labels (application/alert definition) were shown as-is.
+    val parsedDate = parseDateOnlyGroup(rawGroupBy)
+    return if (parsedDate != null) {
+        SimpleDateFormat("d MMM", Locale.ENGLISH).format(parsedDate)
+    } else {
+        rawGroupBy.ifBlank { "Unknown" }
+    }
+}
+
+private fun parseDateOnlyGroup(rawGroupBy: String): Date? {
+    val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.US).apply {
+        isLenient = false
+    }
+    return runCatching { formatter.parse(rawGroupBy) }.getOrNull()
 }
 
 private fun formatGroupDate(

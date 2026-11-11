@@ -28,6 +28,12 @@ class ArchivedAlertsViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _isDeleting = MutableStateFlow(false)
+    val isDeleting: StateFlow<Boolean> = _isDeleting.asStateFlow()
+
+    private val _deleteError = MutableStateFlow<String?>(null)
+    val deleteError: StateFlow<String?> = _deleteError.asStateFlow()
+
     private var lastUserId = ""
     private var lastSessionId = ""
     private var lastCriteria = ArchivedSearchCriteria()
@@ -78,6 +84,52 @@ class ArchivedAlertsViewModel(
         if (lastUserId.isNotBlank() && lastSessionId.isNotBlank()) {
             load(lastUserId, lastSessionId, lastCriteria)
         }
+    }
+
+    fun deleteArchivedAlert(
+        userId: String,
+        sessionId: String,
+        applicationId: Long,
+        archiveId: Long,
+        alertId: Int,
+        alertDefId: Int,
+        aggregateAlertId: String,
+        onSuccess: () -> Unit
+    ) {
+        if (_isDeleting.value) return
+        _isDeleting.value = true
+        _deleteError.value = null
+
+        viewModelScope.launch {
+            try {
+                val action = repository.getDeleteAction(
+                    userId = userId,
+                    sessionId = sessionId,
+                    applicationId = applicationId,
+                    alertDefId = alertDefId
+                ).getOrThrow()
+
+                repository.executeArchivedAction(
+                    userId = userId,
+                    sessionId = sessionId,
+                    applicationId = applicationId,
+                    archiveId = archiveId,
+                    alertId = alertId,
+                    aggregateAlertId = aggregateAlertId,
+                    action = action
+                ).getOrThrow()
+
+                onSuccess()
+            } catch (error: Exception) {
+                _deleteError.value = error.message ?: "Unable to delete this archived alert."
+            } finally {
+                _isDeleting.value = false
+            }
+        }
+    }
+
+    fun clearDeleteError() {
+        _deleteError.value = null
     }
 
     fun clearError() {

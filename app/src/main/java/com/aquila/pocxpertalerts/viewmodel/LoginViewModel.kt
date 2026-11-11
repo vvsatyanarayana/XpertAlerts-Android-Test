@@ -1,7 +1,5 @@
-
 package com.aquila.pocxpertalerts.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.domain.model.User
@@ -25,17 +23,13 @@ data class LoginUiState(
     val successMessage: String? = null,
     val isLoading: Boolean = false,
     val loginSuccess: Boolean = false,
-    val user: User? = null
+    val user: User? = null,
+    val passwordExpiredUser: User? = null
 )
 
 class LoginViewModel(
     private val loginUseCase: LoginUseCase
 ) : ViewModel() {
-
-    companion object {
-        private const val TAG = "LoginViewModel"
-    }
-
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -58,24 +52,22 @@ class LoginViewModel(
     }
 
     fun login(deviceId: String) {
-        val currentState = _uiState.value
+        val current = _uiState.value
+        if (current.isLoading) return
 
-        if (currentState.isLoading) return
-
-        if (currentState.userId.isBlank()) {
-            _uiState.value = currentState.copy(
-                userIdError = "Please enter your User ID.",
+        if (current.userId.isBlank()) {
+            _uiState.value = current.copy(
+                userIdError = "Please enter user ID",
                 passwordError = null,
                 errorMessage = null,
                 successMessage = null
             )
             return
         }
-
-        if (currentState.password.isBlank()) {
-            _uiState.value = currentState.copy(
+        if (current.password.isBlank()) {
+            _uiState.value = current.copy(
                 userIdError = null,
-                passwordError = "Please enter your password.",
+                passwordError = "Please enter password",
                 errorMessage = null,
                 successMessage = null
             )
@@ -90,57 +82,49 @@ class LoginViewModel(
                 successMessage = null,
                 isLoading = true,
                 loginSuccess = false,
-                user = null
+                user = null,
+                passwordExpiredUser = null
             )
 
-            try {
-                val result = loginUseCase(
-                    username = currentState.userId.trim(),
-                    password = currentState.password,
+            val result = try {
+                loginUseCase(
+                    username = current.userId.trim(),
+                    password = current.password,
                     deviceId = deviceId
                 )
-
-                result.fold(
-                    onSuccess = { user ->
-                        handleLoginResponse(user)
-                    },
-                    onFailure = { exception ->
-                        Log.e(TAG, "Login request failed", exception)
-
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            loginSuccess = false,
-                            successMessage = null,
-                            errorMessage = friendlyError(exception)
-                        )
-                    }
-                )
-            } catch (exception: Exception) {
-                Log.e(TAG, "Unexpected login error", exception)
-
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    loginSuccess = false,
-                    errorMessage = friendlyError(exception),
-                    successMessage = null
-                )
+            } catch (e: Exception) {
+                Result.failure(e)
             }
+
+            result.fold(
+                onSuccess = ::handleLoginResponse,
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        loginSuccess = false,
+                        successMessage = null,
+                        errorMessage = friendlyError(error)
+                    )
+                }
+            )
         }
     }
 
     private fun handleLoginResponse(user: User) {
-        Log.d(
-            "AlertsAPI",
-            "Login userId=${user.id}, " +
-                    "sessionId=${user.sessionId}, " +
-                    "userTypeId=${user.userTypeId}"
-        )
-
         if (user.id <= 0) {
+            val serverMessage = user.errorMsg
+                ?.replace("<br><br>", "\n", ignoreCase = true)
+                ?.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+                ?.replace(Regex("<[^>]*>"), " ")
+                ?.replace(Regex("\\s+"), " ")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                ?: "User Name or Password you entered is incorrect"
+
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 loginSuccess = false,
-                errorMessage = "Invalid User ID or password.",
+                errorMessage = serverMessage,
                 successMessage = null
             )
             return
@@ -150,8 +134,21 @@ class LoginViewModel(
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 loginSuccess = false,
-                errorMessage = "This account cannot access the mobile app.",
+                errorMessage = "Admin user cannot login into this app",
                 successMessage = null
+            )
+            return
+        }
+
+        // The legacy app redirects users with any non-zero expiry flag to password reset.
+        if (user.pwdExpiryFlag != 0) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                loginSuccess = false,
+                errorMessage = null,
+                successMessage = null,
+                user = user,
+                passwordExpiredUser = user
             )
             return
         }
@@ -163,73 +160,44 @@ class LoginViewModel(
             successMessage = "Login successful. Welcome!",
             user = user
         )
-
-        // Allow the success message to appear before navigation.
         viewModelScope.launch {
-            delay(900)
-
+            delay(700)
             val state = _uiState.value
             if (state.user == user && state.successMessage != null) {
-                _uiState.value = state.copy(
-                    loginSuccess = true,
-                    successMessage = null
-                )
+                _uiState.value = state.copy(loginSuccess = true, successMessage = null)
             }
         }
     }
 
-    private fun friendlyError(exception: Throwable): String {
-        val message = exception.message.orEmpty().lowercase()
-
+    private fun friendlyError(error: Throwable): String {
+        val message = error.message.orEmpty()
+        val lower = message.lowercase()
         return when {
-            exception is UnknownHostException ||
-                    message.contains("unable to resolve host") ->
-                "Unable to reach the server. Check your server URL and internet connection."
-
-            exception is SocketTimeoutException ||
-                    message.contains("timed out") ->
+            error is UnknownHostException || lower.contains("unable to resolve host") || lower.contains("internet connection") ->
+                "Please check your internet connection"
+            error is SocketTimeoutException || lower.contains("timed out") ->
                 "The server is taking too long to respond. Please try again."
-
-            exception is SSLException ||
-                    message.contains("certpathvalidatorexception") ||
-                    message.contains("trust anchor") ||
-                    message.contains("sslhandshakeexception") ->
-                "Secure connection failed. Please contact support."
-
-            exception is ConnectException ||
-                    message.contains("failed to connect") ||
-                    message.contains("connection refused") ->
+            error is SSLException || lower.contains("ssl") || lower.contains("certificate") || lower.contains("trust anchor") ->
+                "Secure connection failed. Please check the server certificate."
+            error is ConnectException || lower.contains("failed to connect") || lower.contains("connection refused") ->
                 "Unable to connect to the server. Please try again later."
-
-            message.contains("server url is not configured") ||
-                    message.contains("configure the server url") ->
+            lower.contains("invalid web service url") || lower.contains("invalid server url") ->
+                "Invalid Web Service URL"
+            lower.contains("http 401") || lower.contains("http 403") || lower.contains("invalid credentials") ->
+                "User Name or Password you entered is incorrect"
+            lower.contains("http 5") || lower.contains("internal server error") ->
+                "Internal server error, please try again later!"
+            lower.contains("configure the server url") || lower.contains("server url is not configured") ->
                 "Please configure the server URL in Settings."
-
-            message.contains("server test failed") ||
-                    message.contains("login cancelled") ->
-                "Server connection failed. Please check your server URL in Settings."
-
-            message.contains("http 401") ||
-                    message.contains("http 403") ||
-                    message.contains("invalid user") ||
-                    message.contains("invalid credentials") ->
-                "Invalid User ID or password."
-
-
-
-
-            message.contains("http 5") ->
-                "The server is temporarily unavailable. Please try again later."
-
-            else ->
-                "Server URL is incorrect. Please check Settings."
+            else -> message.takeIf { it.isNotBlank() } ?: "Unable to connect to server. Please try again."
         }
     }
 
     fun clearLoginSuccess() {
-        _uiState.value = _uiState.value.copy(
-            loginSuccess = false,
-            successMessage = null
-        )
+        _uiState.value = _uiState.value.copy(loginSuccess = false, successMessage = null)
+    }
+
+    fun clearPasswordExpiredUser() {
+        _uiState.value = _uiState.value.copy(passwordExpiredUser = null)
     }
 }

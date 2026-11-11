@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,19 +75,37 @@ fun SettingsScreen(
 
     LaunchedEffect(uiState.message) {
         uiState.message?.let { message ->
-            val displayMessage = message
-                .replace(Regex("\\s*\\(HTTP\\s*\\d+\\)"), "")
-                .replace(Regex("\\s*\\d{3}\\s+OK"), "")
-                .trim()
-
-            if (displayMessage.isNotBlank()) {
-                Toast.makeText(
-                    context,
-                    displayMessage,
-                    Toast.LENGTH_SHORT
-                ).show()
+            if (message.isNotBlank()) {
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    LaunchedEffect(uiState.saveCompleted) {
+        if (uiState.saveCompleted) {
+            // Give the success toast a chance to be shown before returning to Login.
+            kotlinx.coroutines.delay(250)
+            settingsViewModel.consumeSaveCompleted()
+            onBackClick()
+        }
+    }
+
+    if (uiState.showSaveAnywayConfirmation) {
+        AlertDialog(
+            onDismissRequest = settingsViewModel::dismissSaveAnywayConfirmation,
+            title = { Text("Save server URL?") },
+            text = { Text("The configuration test failed. Are you sure you want to save this URL anyway?") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = settingsViewModel::confirmSaveAnyway
+                ) { Text("Yes") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = settingsViewModel::dismissSaveAnywayConfirmation
+                ) { Text("No") }
+            }
+        )
     }
 
     SettingsScreenContent(

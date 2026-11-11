@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -24,6 +26,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,8 +56,46 @@ private val ArchivedDetailsLightOrange = Color(0xFFFFF0E6)
 @Composable
 fun ArchivedAlertDetailsScreen(
     alert: ArchivedAlertUi,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onDeleteClick: () -> Unit = {},
+    isDeleting: Boolean = false,
+    deleteError: String? = null,
+    onClearDeleteError: () -> Unit = {}
 ) {
+    var showDeleteConfirmation by remember(alert.id) { mutableStateOf(false) }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting) showDeleteConfirmation = false },
+            title = { Text("Delete archived alert?") },
+            text = { Text("This action will process the server-configured delete action for this archived alert.") },
+            confirmButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDeleteClick()
+                    }
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = { showDeleteConfirmation = false }
+                ) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (deleteError != null) {
+        AlertDialog(
+            onDismissRequest = onClearDeleteError,
+            title = { Text("Unable to delete alert") },
+            text = { Text(deleteError) },
+            confirmButton = { TextButton(onClick = onClearDeleteError) { Text("OK") } }
+        )
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = AppBackground,
@@ -172,21 +218,38 @@ fun ArchivedAlertDetailsScreen(
                 )
 
                 ArchivedDetailInfoRow(
-                    label = "Priority",
-                    value = alert.priority.ifBlank { "Non Urgent" }
+                    label = "Alert Definition ID",
+                    value = alert.alertDefId.takeIf { it > 0 }?.toString().orEmpty()
                 )
 
                 ArchivedDetailInfoRow(
-                    label = "Current Status",
-                    value = alert.currentStatus.ifBlank { "Archived" }
+                    label = "Aggregate Alert ID",
+                    value = alert.aggregateAlertId
                 )
 
                 ArchivedDetailInfoRow(
-                    label = "Application URL",
-                    value = alert.applicationUrl.ifBlank {
-                        "Not available"
-                    }
+                    label = "Group",
+                    value = alert.title
                 )
+            }
+
+            Button(
+                onClick = { showDeleteConfirmation = true },
+                enabled = !isDeleting,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text("Deleting…")
+                } else {
+                    Text("Delete")
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -1,5 +1,8 @@
+
 package com.aquila.pocxpertalerts.data.remote
+
 import android.util.Log
+import com.aquila.pocxpertalerts.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -12,7 +15,6 @@ object RetrofitClient {
         "https://testapps.aquilasoftware.com/ams/webservice/"
 
     fun createApiService(configuredUrl: String): ApiService {
-
 
         var normalizedUrl = configuredUrl.trim().trimEnd('/')
 
@@ -36,8 +38,15 @@ object RetrofitClient {
             level = HttpLoggingInterceptor.Level.BASIC
         }
 
-        // Preserve the existing SSL configuration.
-        val client = UnsafeSslHelper.okHttpClient.newBuilder()
+        // Debug: use the existing SSL-bypass client.
+        // Release: use normal certificate and hostname validation.
+        val clientBuilder = if (BuildConfig.DEBUG) {
+            UnsafeSslHelper.okHttpClient.newBuilder()
+        } else {
+            OkHttpClient.Builder()
+        }
+
+        val client = clientBuilder
             .addInterceptor(SessionExpirationInterceptor())
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)

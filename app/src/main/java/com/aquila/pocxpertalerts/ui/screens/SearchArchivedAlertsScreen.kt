@@ -116,7 +116,7 @@ fun SearchArchivedAlertsScreen(
             }.parse(apiDate) ?: return ""
 
             SimpleDateFormat(
-                "dd/MM/yyyy",
+                "MM/dd/yyyy",
                 Locale.US
             ).format(parsed)
         }.getOrDefault("")
@@ -126,12 +126,27 @@ fun SearchArchivedAlertsScreen(
         mutableStateOf(initialCriteria.keyword)
     }
 
+    fun defaultDisplayDate(daysBack: Int): String {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, -daysBack)
+        return SimpleDateFormat("MM/dd/yyyy", Locale.US).format(calendar.time)
+    }
+
+    // Match the legacy Java screen: default to the last three days through today.
     var startDate by remember {
-        mutableStateOf(displayDate(initialCriteria.startDate))
+        mutableStateOf(
+            displayDate(initialCriteria.startDate).ifBlank {
+                defaultDisplayDate(3)
+            }
+        )
     }
 
     var endDate by remember {
-        mutableStateOf(displayDate(initialCriteria.endDate))
+        mutableStateOf(
+            displayDate(initialCriteria.endDate).ifBlank {
+                defaultDisplayDate(0)
+            }
+        )
     }
 
     var viewBy by remember {
@@ -190,8 +205,8 @@ fun SearchArchivedAlertsScreen(
 
     fun resetFields() {
         keyword = ""
-        startDate = ""
-        endDate = ""
+        startDate = defaultDisplayDate(3)
+        endDate = defaultDisplayDate(0)
         viewBy = "All"
         deviceStatus = "All"
         emailStatus = "All"
@@ -299,22 +314,34 @@ fun SearchArchivedAlertsScreen(
                     val apiStartDate = startDate.toApiDate()
                     val apiEndDate = endDate.toApiDate()
 
-                    if (
-                        startDate.isNotBlank() &&
-                        apiStartDate.isBlank()
-                    ) {
+                    if (startDate.isBlank()) {
                         Toast.makeText(
                             context,
-                            "Please select a valid start date.",
+                            "Start Date cannot be empty",
                             Toast.LENGTH_SHORT
                         ).show()
                         return@Button
                     }
 
-                    if (
-                        endDate.isNotBlank() &&
-                        apiEndDate.isBlank()
-                    ) {
+                    if (apiStartDate.isBlank()) {
+                        Toast.makeText(
+                            context,
+                            "Start Date is invalid",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@Button
+                    }
+
+                    if (endDate.isBlank()) {
+                        Toast.makeText(
+                            context,
+                            "End Date cannot be empty",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@Button
+                    }
+
+                    if (apiEndDate.isBlank()) {
                         Toast.makeText(
                             context,
                             "Please select a valid end date.",
@@ -442,7 +469,7 @@ private fun ArchivedDateField(
                     if (value.isNotBlank()) {
                         runCatching {
                             val parsed = SimpleDateFormat(
-                                "dd/MM/yyyy",
+                                "MM/dd/yyyy",
                                 Locale.US
                             ).apply {
                                 isLenient = false
@@ -471,7 +498,7 @@ private fun ArchivedDateField(
 
                             onDateSelected(
                                 SimpleDateFormat(
-                                    "dd/MM/yyyy",
+                                    "MM/dd/yyyy",
                                     Locale.US
                                 ).format(selected.time)
                             )
@@ -587,7 +614,7 @@ private fun String.toApiDate(): String {
 
     return runCatching {
         val parsed = SimpleDateFormat(
-            "dd/MM/yyyy",
+            "MM/dd/yyyy",
             Locale.US
         ).apply {
             isLenient = false

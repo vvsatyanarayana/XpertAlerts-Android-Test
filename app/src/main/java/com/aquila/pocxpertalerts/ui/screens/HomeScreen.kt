@@ -90,6 +90,7 @@ import java.util.Date
 import java.util.Locale
 import com.aquila.pocxpertalerts.ui.components.AppListSearchBar
 import kotlinx.coroutines.launch
+import androidx.compose.material3.CircularProgressIndicator
 // ============================================================
 // HOME SCREEN
 // ============================================================
@@ -111,6 +112,8 @@ fun HomeScreen(
     userId: String = "",
     sessionId: String = "",
     isRefreshing: Boolean = false,
+    // True while the initial Home alerts request is in progress.
+    isLoading: Boolean = false,
     alertsError: String? = null,
     onRefreshClick: () -> Unit = {},
     onAlertsChanged: (List<AlertDto>) -> Unit = {}
@@ -373,7 +376,6 @@ fun HomeScreen(
                                     } else {
                                         alert.id.toString()
                                     }
-
                                 onAlertClick(selectedId)
                             }
                         },
@@ -434,7 +436,8 @@ fun HomeScreen(
                             val selectedId = if (alert.alertId != 0) alert.alertId.toString() else alert.id.toString()
                             onAlertClick(selectedId)
                         },
-                        onSearchClick = onSearchClick
+                        onSearchClick = onSearchClick,
+                        isLoading = isLoading
                     )
 
                     // Keep existing alerts visible if refresh fails and allow a retry.
@@ -799,7 +802,8 @@ fun AlertsContent(
     onSwipeReveal: (AlertDto) -> Unit,
     onSwipeActionClick: (AlertDto, AlertDynamicAction) -> Unit,
     onSwipeMoreClick: (AlertDto) -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    isLoading: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -818,7 +822,20 @@ fun AlertsContent(
             )
         )
 
-        if (alerts.isEmpty()) {
+        if (alerts.isEmpty() && isLoading) {
+            // Show loading only when there are no alerts to display yet.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = XpertOrange
+                )
+            }
+        } else if (alerts.isEmpty()) {
+            // Show the empty state only after loading has completed.
             Box(
                 modifier = Modifier
                     .fillMaxSize()

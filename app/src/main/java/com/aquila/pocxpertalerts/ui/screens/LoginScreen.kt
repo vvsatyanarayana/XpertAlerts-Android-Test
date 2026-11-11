@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
+import com.aquila.pocxpertalerts.data.local.UserSessionDataStore
 import com.aquila.pocxpertalerts.domain.model.User
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.theme.AppBackground
@@ -43,12 +44,16 @@ import com.aquila.pocxpertalerts.viewmodel.LoginViewModelFactory
 @Composable
 fun LoginScreen(
     onLoginSuccess: (User) -> Unit,
+    onPasswordExpired: (User) -> Unit,
     onSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current.applicationContext
 
     val settingsDataStore = remember(context) {
         SettingsDataStore(context)
+    }
+    val userSessionDataStore = remember(context) {
+        UserSessionDataStore(context)
     }
 
     val loginFactory = remember(settingsDataStore) {
@@ -71,10 +76,23 @@ fun LoginScreen(
     LaunchedEffect(uiState.loginSuccess) {
         if (uiState.loginSuccess) {
             uiState.user?.let { user ->
+                // Persist successful, non-expired sessions for legacy-style automatic login.
+                try {
+                    userSessionDataStore.saveUser(user)
+                } catch (_: Exception) {
+                    // Login should still succeed if local persistence temporarily fails.
+                }
                 onLoginSuccess(user)
             }
 
             loginViewModel.clearLoginSuccess()
+        }
+    }
+
+    LaunchedEffect(uiState.passwordExpiredUser) {
+        uiState.passwordExpiredUser?.let { user ->
+            onPasswordExpired(user)
+            loginViewModel.clearPasswordExpiredUser()
         }
     }
 

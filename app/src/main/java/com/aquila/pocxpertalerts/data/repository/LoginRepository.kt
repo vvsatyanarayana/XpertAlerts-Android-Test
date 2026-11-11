@@ -2,10 +2,11 @@
 package com.aquila.pocxpertalerts.data.repository
 
 import android.util.Log
+import com.aquila.pocxpertalerts.BuildConfig
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.data.model.toDomain
-import com.aquila.pocxpertalerts.data.remote.ApiService
 import com.aquila.pocxpertalerts.data.remote.RetrofitClient
+import com.aquila.pocxpertalerts.data.remote.UnsafeSslHelper
 import com.aquila.pocxpertalerts.domain.model.User
 import com.aquila.pocxpertalerts.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +15,8 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
-import com.aquila.pocxpertalerts.data.remote.UnsafeSslHelper
+import javax.net.ssl.HostnameVerifier
+
 class LoginRepository(
     private val settingsDataStore: SettingsDataStore
 ) : AuthRepository {
@@ -31,7 +33,7 @@ class LoginRepository(
     ): Result<User> = withContext(Dispatchers.IO) {
 
         try {
-            // 1. Always read the latest saved server URL.
+            // 1. Read the latest saved server URL.
             val configuredUrl =
                 settingsDataStore.webServiceUrl.first().trim()
 
@@ -64,17 +66,13 @@ class LoginRepository(
                 )
             }
 
-            Log.d(TAG, "STEP 1: Testing configured server URL")
-            Log.d(TAG, "Configured URL: $configuredUrl")
+            Log.d(TAG, "Testing configured server URL")
 
-            // 3. Test the exact saved URL before authentication.
+            // 3. Test the configured server.
             val responseCode = testConfiguredUrl(configuredUrl)
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.e(
-                    TAG,
-                    "Server test failed: HTTP $responseCode. Authentication cancelled."
-                )
+                Log.e(TAG, "Server test failed: HTTP $responseCode")
 
                 return@withContext Result.failure(
                     IllegalStateException(
@@ -83,15 +81,13 @@ class LoginRepository(
                 )
             }
 
-            Log.d(TAG, "STEP 2: Server test succeeded")
+            Log.d(TAG, "Server test succeeded")
 
-            // 4. Create the API service using the same saved URL.
+            // 4. Create the API service.
             val apiService =
                 RetrofitClient.createApiService(configuredUrl)
 
-            // 5. Authenticate ONLY after the server test succeeds.
-            Log.d(TAG, "STEP 3: Calling authentication API")
-
+            // 5. Authenticate.
             val users = apiService.authenticateUserForDevices(
                 username = username,
                 password = password,
@@ -109,11 +105,7 @@ class LoginRepository(
             }
 
         } catch (e: Exception) {
-            Log.e(
-                TAG,
-                "Server test or authentication failed",
-                e
-            )
+            Log.e(TAG, "Server test or authentication failed", e)
 
             Result.failure(
                 Exception(
@@ -124,7 +116,6 @@ class LoginRepository(
         }
     }
 
-
     private fun testConfiguredUrl(urlText: String): Int {
         var connection: HttpURLConnection? = null
 
@@ -132,13 +123,13 @@ class LoginRepository(
             connection = URL(urlText)
                 .openConnection() as HttpURLConnection
 
-            // Match the existing Settings screen SSL behavior.
-            if (connection is HttpsURLConnection) {
+            // Bypass SSL certificate and hostname checks in Debug only.
+            if (BuildConfig.DEBUG && connection is HttpsURLConnection) {
                 connection.sslSocketFactory =
                     UnsafeSslHelper.sslSocketFactory
 
                 connection.hostnameVerifier =
-                    javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    HostnameVerifier { _, _ -> true }
             }
 
             connection.requestMethod = "GET"
@@ -152,5 +143,4 @@ class LoginRepository(
             connection?.disconnect()
         }
     }
-
 }

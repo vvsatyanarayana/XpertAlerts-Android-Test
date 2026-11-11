@@ -17,6 +17,14 @@ interface ApiService {
         @Query("deviceId") deviceId: String
     ): List<UserDto>
 
+
+    @GET("saveTokenDetails")
+    suspend fun saveTokenDetails(
+        @Query("deviceTypeId") deviceTypeId: Int = 1,
+        @Query("deviceId") deviceId: String,
+        @Query("tokenId") tokenId: String
+    ): JsonElement
+
     @GET("getAlertsForDevices")
     suspend fun getAlertsForDevices(
         @QueryMap parameters: Map<String, String>
