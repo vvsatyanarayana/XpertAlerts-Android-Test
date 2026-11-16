@@ -1,6 +1,5 @@
 package com.aquila.pocxpertalerts.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.repository.ForwardAlertsRepository
@@ -122,7 +121,7 @@ class ForwardAlertsViewModel(
                     searchAppId = searchAppId
                 )
 
-                Log.d("ForwardAlertsAPI", "List response: $response")
+
 
                 val (errorCode, errorMessage) = getApiError(response)
 
@@ -187,7 +186,7 @@ class ForwardAlertsViewModel(
                     }
                 )
             } catch (e: Exception) {
-                Log.e("ForwardAlertsAPI", "Failed to load list", e)
+
 
                 _listState.value = ForwardAlertsListState(
                     errorMessage = e.message
@@ -272,10 +271,10 @@ class ForwardAlertsViewModel(
                 errorMessage = "User session is missing."
             )
 
-            Log.e(
-                "ForwardUsers",
-                "Cannot load users: user ID, user type ID, or session ID is missing."
-            )
+
+
+
+
             return
         }
 
@@ -287,10 +286,10 @@ class ForwardAlertsViewModel(
             )
 
             try {
-                Log.d(
-                    "ForwardUsers",
-                    "Loading users for applicationId=$applicationId"
-                )
+
+
+
+
 
                 val response = repository.getUsers(
                     userId = currentUserId,
@@ -299,18 +298,18 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
-                Log.d("ForwardUsers", "Raw response: $response")
+
 
                 val records = response.toOptionRecords()
 
-                Log.d(
-                    "ForwardUsers",
-                    "Response records count: ${records.size}"
-                )
+
+
+
+
 
                 val parsedUsers = records.mapNotNull { item ->
                     if (!item.isJsonObject) {
-                        Log.w("ForwardUsers", "Skipping non-object record: $item")
+
                         return@mapNotNull null
                     }
 
@@ -351,16 +350,16 @@ class ForwardAlertsViewModel(
 
                     val email = read("email", "userEmail", "mailId")
 
-                    Log.d(
-                        "ForwardUsers",
-                        "Parsed candidate: id=$id, name=$name, email=$email"
-                    )
+
+
+
+
 
                     if (id.isBlank() || name.isBlank()) {
-                        Log.w(
-                            "ForwardUsers",
-                            "Skipping record because ID or name is missing: $obj"
-                        )
+
+
+
+
                         null
                     } else {
                         ForwardUserOption(
@@ -371,26 +370,22 @@ class ForwardAlertsViewModel(
                     }
                 }
 
-                Log.d(
-                    "ForwardUsers",
-                    "Successfully parsed ${parsedUsers.size} users"
-                )
+
+
+
+
 
                 _formState.value = _formState.value.copy(
                     users = parsedUsers,
                     isLoadingUsers = false,
                     errorMessage = if (parsedUsers.isEmpty()) {
-                        "No users were returned. Check the API response in Logcat."
+                        "No users were returned by the server. Please try again or contact support."
                     } else {
                         null
                     }
                 )
             } catch (e: Exception) {
-                Log.e(
-                    "ForwardUsers",
-                    "Failed to load users for applicationId=$applicationId",
-                    e
-                )
+
 
                 _formState.value = _formState.value.copy(
                     isLoadingUsers = false,
@@ -424,7 +419,7 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
-                Log.d("ForwardAlertsAPI", "User email response: $response")
+
 
                 val email = when {
                     response.isJsonPrimitive ->
@@ -473,7 +468,7 @@ class ForwardAlertsViewModel(
                     }
                 )
             } catch (e: Exception) {
-                Log.e("ForwardAlertsAPI", "Failed to load user email", e)
+
 
                 _createState.value = _createState.value.copy(
                     isLoadingEmail = false,
@@ -535,10 +530,7 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
-                Log.d(
-                    "ForwardAlertsAPI",
-                    "Duplicate check response: $duplicateResponse"
-                )
+
 
                 val duplicateObject = when {
                     duplicateResponse.isJsonObject ->
@@ -601,10 +593,7 @@ class ForwardAlertsViewModel(
                     sessionId = currentSessionId
                 )
 
-                Log.d(
-                    "ForwardAlertsAPI",
-                    "Save mapping response: $saveResponse"
-                )
+
 
                 val saveObject = when {
                     saveResponse.isJsonObject ->
@@ -654,7 +643,7 @@ class ForwardAlertsViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Log.e("ForwardAlertsAPI", "Create forward alert failed", e)
+
 
                 _createState.value = _createState.value.copy(
                     isSaving = false,
@@ -760,10 +749,7 @@ class ForwardAlertsViewModel(
             try {
                 val response = request()
 
-                Log.d(
-                    "ForwardAlertsAPI",
-                    "$actionName response: $response"
-                )
+
 
                 val (errorCode, errorMessage) = getApiError(response)
 
@@ -796,7 +782,7 @@ class ForwardAlertsViewModel(
                     searchAppId = currentSearchAppId
                 )
             } catch (e: Exception) {
-                Log.e("ForwardAlertsAPI", "$actionName failed", e)
+
 
                 _listState.value = _listState.value.copy(
                     isLoading = false,

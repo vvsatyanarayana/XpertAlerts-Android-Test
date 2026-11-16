@@ -3,7 +3,6 @@ package com.aquila.pocxpertalerts.ui.screens
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.data.repository.AlertDynamicAction
+import com.aquila.pocxpertalerts.data.local.SettingsDataStore
+import com.aquila.pocxpertalerts.data.remote.ApiService
+import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.repository.AlertDynamicActionRepository
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.components.AppTopBar
@@ -72,6 +74,7 @@ import java.util.Locale
 @Composable
 fun AlertDetailScreen(
     alert: AlertDto,
+    apiService: ApiService,
     onBackClick: () -> Unit,
     userId: String,
     sessionId: String,
@@ -80,8 +83,8 @@ fun AlertDetailScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val repository = remember {
-        AlertDynamicActionRepository()
+    val repository = remember(apiService) {
+        AlertDynamicActionRepository(apiService)
     }
 
     val displayedId = if (alert.alertId != 0) {
@@ -161,11 +164,7 @@ fun AlertDetailScreen(
                         onBackClick()
                     },
                     onFailure = { error ->
-                        Log.e(
-                            "XPERT_API",
-                            "processDynamicActions failed",
-                            error
-                        )
+
                         Toast.makeText(
                             context,
                             error.message ?: "Unable to complete action.",
@@ -174,11 +173,7 @@ fun AlertDetailScreen(
                     }
                 )
             } catch (error: Exception) {
-                Log.e(
-                    "XPERT_API",
-                    "Unexpected action execution error",
-                    error
-                )
+
                 Toast.makeText(
                     context,
                     error.message ?: "Unable to complete action.",
@@ -198,13 +193,13 @@ fun AlertDetailScreen(
         userId,
         sessionId
     ) {
-        Log.d(
-            "XPERT_API",
-            "Opening alert details: " +
-                    "applicationId=${alert.applicationId}, " +
-                    "alertDefId=${alert.alertDefId}, " +
-                    "alertId=${alert.alertId}"
-        )
+
+
+
+
+
+
+
 
         isLoadingActions = true
 
@@ -220,20 +215,16 @@ fun AlertDetailScreen(
                 onSuccess = { actions ->
                     dynamicActions = actions
 
-                    Log.d(
-                        "XPERT_API",
-                        "Actions displayed: " +
-                                dynamicActions.map { it.caption }
-                    )
+
+
+
+
+
                 },
                 onFailure = { error ->
                     dynamicActions = emptyList()
 
-                    Log.e(
-                        "XPERT_API",
-                        "Failed to load alert actions",
-                        error
-                    )
+
 
                     Toast.makeText(
                         context,
@@ -245,11 +236,7 @@ fun AlertDetailScreen(
         } catch (error: Exception) {
             dynamicActions = emptyList()
 
-            Log.e(
-                "XPERT_API",
-                "Unexpected error loading alert actions",
-                error
-            )
+
         } finally {
             isLoadingActions = false
         }
@@ -269,7 +256,7 @@ fun AlertDetailScreen(
                     title = "Alert Details",
                     onBackClick = onBackClick,
                     onMoreClick = {
-                        Log.d("XPERT_API", "Three-dot menu tapped")
+
                         menuExpanded = true
                     }
                 )
@@ -689,6 +676,9 @@ private fun AlertDetailScreenPreview() {
                 applicationId = 45L,
                 alertDefId = 1,
                 userId = "1"
+            ),
+            apiService = RetrofitClient.createApiService(
+                SettingsDataStore.DEFAULT_URL
             ),
             onBackClick = {},
             onActionSuccess = {},

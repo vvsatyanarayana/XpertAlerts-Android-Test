@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.data.remote.RetrofitClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,10 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import java.net.URL
 import javax.net.ssl.SSLException
 
 data class SettingsUiState(
@@ -103,7 +104,7 @@ class SettingsViewModel(
                     isSaving = false,
                     message = testResult.first,
                     isError = true,
-                    showSaveAnywayConfirmation = false,
+                    showSaveAnywayConfirmation = true,
                     saveCompleted = false
                 )
             }
@@ -143,6 +144,8 @@ class SettingsViewModel(
                 showSaveAnywayConfirmation = false,
                 saveCompleted = true
             )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             _uiState.value = _uiState.value.copy(
                 isSaving = false,
@@ -155,14 +158,15 @@ class SettingsViewModel(
 
     private fun validateUrl(value: String): String? {
         if (value.isBlank()) return "Please enter web service URL"
-        return try {
-            val parsed = URL(value)
-            if ((parsed.protocol.equals("http", true) || parsed.protocol.equals("https", true)) &&
-                parsed.host.isNotBlank()
-            ) null else "Invalid Web Service URL"
-        } catch (_: Exception) {
-            "Invalid Web Service URL"
+
+        val parsed = value.trim().toHttpUrlOrNull()
+            ?: return "Invalid Web Service URL"
+
+        if (parsed.query != null || parsed.fragment != null) {
+            return "Server URL must not contain a query string or fragment."
         }
+
+        return null
     }
 
 
@@ -185,6 +189,8 @@ class SettingsViewModel(
                 "Configuration failed, Please check url" to false
             }
 
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
 
             val message = when (error) {

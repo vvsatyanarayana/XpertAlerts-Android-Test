@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.domain.model.User
 import com.aquila.pocxpertalerts.domain.usecase.LoginUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,6 +93,8 @@ class LoginViewModel(
                     password = current.password,
                     deviceId = deviceId
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Result.failure(e)
             }

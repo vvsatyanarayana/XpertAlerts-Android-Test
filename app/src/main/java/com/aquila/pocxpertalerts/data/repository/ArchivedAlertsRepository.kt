@@ -1,7 +1,6 @@
 package com.aquila.pocxpertalerts.data.repository
 
 import android.net.Uri
-import android.util.Log
 import com.aquila.pocxpertalerts.data.model.ArchivedAlertDto
 import com.aquila.pocxpertalerts.data.remote.ApiService
 import com.google.gson.JsonElement
@@ -59,14 +58,11 @@ class ArchivedAlertsRepository(private val apiService: ApiService) {
                 emailStatus = emailStatus.toString(),
                 sessionId = sessionId
             )
-            Log.d(
-                "ArchivedAlertsAPI",
-                "Raw archived alerts response: $response"
-            )
+
 
             Result.success(parseResponse(response))
         } catch (e: Exception) {
-            Log.e("ArchivedAlertsAPI", "Failed to load archived alerts", e)
+
             Result.failure(e)
         }
     }
@@ -123,10 +119,7 @@ class ArchivedAlertsRepository(private val apiService: ApiService) {
                 userId = userId,
                 sessionId = sessionId
             )
-            Log.d(
-                "ArchivedDelete",
-                "getAlertButtonDetails response: $response"
-            )
+
 
             require(response.isJsonArray && response.asJsonArray.size() > 0) {
                 "The server did not return any available actions."

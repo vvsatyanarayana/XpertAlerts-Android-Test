@@ -1,11 +1,10 @@
 package com.aquila.pocxpertalerts.data.repository
 
 import com.aquila.pocxpertalerts.data.remote.ApiService
-import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.google.gson.JsonElement
 
 class ForwardAlertsRepository(
-    private val api: ApiService = RetrofitClient.apiService
+    private val api: ApiService
 ) {
     suspend fun getForwardAlerts(
         baseUserId: String,

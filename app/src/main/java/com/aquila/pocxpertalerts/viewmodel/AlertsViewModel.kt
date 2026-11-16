@@ -1,11 +1,11 @@
 package com.aquila.pocxpertalerts.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.data.repository.AlertRepository
 import com.aquila.pocxpertalerts.data.repository.ApiDropdownOption
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,12 +51,12 @@ class AlertsViewModel(
                 repository.getApplications(userId, userTypeId, sessionId).fold(
                     onSuccess = { options ->
                         _applications.value = options
-                        Log.d("ApplicationAPI", "Loaded ${options.size} application options")
+
                     },
                     onFailure = { error ->
                         _applications.value = emptyList()
                         _dropdownErrorMessage.value = error.message ?: "Unable to load applications."
-                        Log.e("ApplicationAPI", "Application list failed", error)
+
                     }
                 )
             } finally {
@@ -79,12 +79,12 @@ class AlertsViewModel(
                 repository.getAlertDefinitions(applicationId, sessionId).fold(
                     onSuccess = { options ->
                         _alertDefinitions.value = options
-                        Log.d("AlertDefinitionAPI", "Loaded ${options.size} alert definitions for application $applicationId")
+
                     },
                     onFailure = { error ->
                         _alertDefinitions.value = emptyList()
                         _dropdownErrorMessage.value = error.message ?: "Unable to load alert definitions."
-                        Log.e("AlertDefinitionAPI", "Alert definition list failed", error)
+
                     }
                 )
             } finally {
@@ -102,13 +102,12 @@ class AlertsViewModel(
         applicationId: String,
         alertDefinitionId: String,
         sessionId: String,
-        onSuccess: (List<AlertDto>) -> Unit = {}
+        onSuccess: (List<AlertDto>) -> Unit = {},
+        onFailure: (Throwable) -> Unit = {}
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            Log.d("AlertsAPI", "Calling getAlertsForDevices")
-            Log.d("AlertCompare", "Search dates: $startDate to $endDate")
             try {
                 val result = repository.getAlerts(
                     userId = userId,
@@ -123,34 +122,20 @@ class AlertsViewModel(
                 result.fold(
                     onSuccess = { response ->
                         _alerts.value = response
-                        Log.d("AlertCompare", "Total alerts received: ${response.size}")
-                        response.take(10).forEachIndexed { index, alert ->
-                            Log.d("AlertCompare", """
-                                Alert #${index + 1}
-                                id=${alert.id}
-                                alertId=${alert.alertId}
-                                subject=${alert.subject}
-                                message=${alert.message}
-                                alertSendDate=${alert.alertSendDate}
-                                groupBy=${alert.groupBy}
-                            """.trimIndent())
-                        }
+                        // Do not log alert content or identifiers; alerts may contain sensitive data.
                         onSuccess(response)
                     },
                     onFailure = { error ->
                         _errorMessage.value =
                             error.message ?: "Unable to retrieve alerts."
-
-                        Log.e(
-                            "AlertsAPI",
-                            "getAlertsForDevices failed",
-                            error
-                        )
+                        onFailure(error)
                     }
                 )
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 _errorMessage.value = error.message ?: "Unexpected API error"
-                Log.e("AlertsAPI", "Unexpected error", error)
+                onFailure(error)
             } finally {
                 _isLoading.value = false
             }

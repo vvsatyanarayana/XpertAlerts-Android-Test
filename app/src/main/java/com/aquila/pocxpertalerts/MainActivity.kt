@@ -2,6 +2,7 @@
 package com.aquila.pocxpertalerts
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -25,14 +26,48 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.aquila.pocxpertalerts.navigation.AppNavigation
+import com.aquila.pocxpertalerts.notifications.NotificationIntentKeys
+import com.aquila.pocxpertalerts.notifications.NotificationOpenRequest
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
-import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
+    private var notificationOpenRequest by mutableStateOf<NotificationOpenRequest?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        notificationOpenRequest = intent.toNotificationOpenRequest()
+    }
+
+    private fun clearNotificationIntentExtras() {
+        intent?.let { current ->
+            listOf(
+                NotificationIntentKeys.OPEN_NOTIFICATION,
+                NotificationIntentKeys.NOTIFICATION_ID,
+                NotificationIntentKeys.ALERT_ID,
+                NotificationIntentKeys.TITLE,
+                NotificationIntentKeys.BODY,
+                "google.message_id",
+                "gcm.n.e",
+                "gcm.n.title",
+                "gcm.n.body",
+                "alertId",
+                "alertID",
+                "alert_id",
+                "dispatchId",
+                "title",
+                "subject",
+                "body",
+                "message"
+            ).forEach(current::removeExtra)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        notificationOpenRequest = intent.toNotificationOpenRequest()
 
         enableEdgeToEdge()
 
@@ -44,14 +79,23 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             XpertAlertsTheme {
-                XpertAlertsApp()
+                XpertAlertsApp(
+                    notificationOpenRequest = notificationOpenRequest,
+                    onNotificationOpenRequestConsumed = {
+                        notificationOpenRequest = null
+                        clearNotificationIntentExtras()
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun XpertAlertsApp() {
+fun XpertAlertsApp(
+    notificationOpenRequest: NotificationOpenRequest? = null,
+    onNotificationOpenRequestConsumed: () -> Unit = {}
+) {
 
     var showSplash by remember {
         mutableStateOf(true)
@@ -65,7 +109,10 @@ fun XpertAlertsApp() {
     if (showSplash) {
         SplashScreen()
     } else {
-        AppNavigation()
+        AppNavigation(
+            notificationOpenRequest = notificationOpenRequest,
+            onNotificationOpenRequestConsumed = onNotificationOpenRequestConsumed
+        )
     }
 }
 
@@ -93,10 +140,41 @@ fun SplashScreen() {
     showBackground = true,
     showSystemUi = true,
 
-)
+    )
 @Composable
 private fun SplashScreenPreview() {
     XpertAlertsTheme {
         SplashScreen()
     }
+}
+
+
+private fun Intent?.toNotificationOpenRequest(): NotificationOpenRequest? {
+    val source = this ?: return null
+    val extras = source.extras
+    val explicitOpen = source.getBooleanExtra(NotificationIntentKeys.OPEN_NOTIFICATION, false)
+    val alertId = source.getStringExtra(NotificationIntentKeys.ALERT_ID)
+        ?: source.getStringExtra("alertId")
+        ?: source.getStringExtra("alertID")
+        ?: source.getStringExtra("alert_id")
+        ?: source.getStringExtra("dispatchId")
+    val title = source.getStringExtra(NotificationIntentKeys.TITLE)
+        ?: source.getStringExtra("gcm.n.title")
+        ?: source.getStringExtra("title")
+        ?: source.getStringExtra("subject")
+    val body = source.getStringExtra(NotificationIntentKeys.BODY)
+        ?: source.getStringExtra("gcm.n.body")
+        ?: source.getStringExtra("body")
+        ?: source.getStringExtra("message")
+    val looksLikeFcmTap = extras?.containsKey("google.message_id") == true ||
+            extras?.containsKey("gcm.n.e") == true || alertId != null || title != null || body != null
+    if (!explicitOpen && !looksLikeFcmTap) return null
+
+    return NotificationOpenRequest(
+        notificationId = source.getStringExtra(NotificationIntentKeys.NOTIFICATION_ID)
+            ?: source.getStringExtra("google.message_id"),
+        alertId = alertId,
+        title = title,
+        body = body
+    )
 }

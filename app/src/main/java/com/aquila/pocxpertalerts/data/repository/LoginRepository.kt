@@ -1,7 +1,6 @@
 
 package com.aquila.pocxpertalerts.data.repository
 
-import android.util.Log
 import com.aquila.pocxpertalerts.BuildConfig
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.data.model.toDomain
@@ -9,6 +8,7 @@ import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.remote.UnsafeSslHelper
 import com.aquila.pocxpertalerts.domain.model.User
 import com.aquila.pocxpertalerts.domain.repository.AuthRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -36,7 +36,6 @@ class LoginRepository(
             // 1. Read the latest saved server URL.
             val configuredUrl =
                 settingsDataStore.webServiceUrl.first().trim()
-            Log.d(TAG, "Configured server host: ${URL(configuredUrl).host}")
 
             if (configuredUrl.isBlank()) {
                 return@withContext Result.failure(
@@ -67,7 +66,7 @@ class LoginRepository(
                 )
             }
 
-            Log.d(TAG, "Testing configured server URL")
+
 
             // 3. Test the configured server.
             val serverValid = testConfiguredUrl(configuredUrl)
@@ -80,9 +79,9 @@ class LoginRepository(
                 )
             }
 
-            Log.d(TAG, "Server validation successful")
 
-            Log.d(TAG, "Server test succeeded")
+
+
 
             // 4. Create the API service.
             val apiService =
@@ -105,8 +104,10 @@ class LoginRepository(
                 Result.success(users.first().toDomain())
             }
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Server test or authentication failed", e)
+
 
             Result.failure(
                 Exception(
@@ -133,18 +134,15 @@ class LoginRepository(
                 "$baseUrl/check"
             }
 
-            Log.d(TAG, "Testing server connection")
+
 
             connection = URL(checkUrl)
                 .openConnection() as HttpURLConnection
 
-            // Debug SSL configuration.
+            // Match Retrofit's Debug-only local certificate bypass for the /check probe.
             if (BuildConfig.DEBUG && connection is HttpsURLConnection) {
-                connection.sslSocketFactory =
-                    UnsafeSslHelper.sslSocketFactory
-
-                connection.hostnameVerifier =
-                    HostnameVerifier { _, _ -> true }
+                connection.sslSocketFactory = UnsafeSslHelper.sslSocketFactory
+                connection.hostnameVerifier = HostnameVerifier { _, _ -> true }
             }
 
             connection.requestMethod = "GET"
@@ -155,7 +153,7 @@ class LoginRepository(
             val responseCode = connection.responseCode
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.e(TAG, "Server check HTTP status: $responseCode")
+
                 return false
             }
 
@@ -164,7 +162,6 @@ class LoginRepository(
                 .bufferedReader()
                 .use { it.readText() }
 
-            Log.d(TAG, "Server check response: $responseBody")
 
             // Match the original iOS validation.
             val json = org.json.JSONObject(responseBody)
@@ -173,7 +170,7 @@ class LoginRepository(
             return checkValue == "1"
 
         } catch (e: Exception) {
-            Log.e(TAG, "Server validation failed", e)
+
             return false
 
         } finally {

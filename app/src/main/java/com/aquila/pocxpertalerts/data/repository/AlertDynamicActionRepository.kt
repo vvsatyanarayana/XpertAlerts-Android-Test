@@ -1,10 +1,8 @@
 
 package com.aquila.pocxpertalerts.data.repository
 
-import android.util.Log
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.data.remote.ApiService
-import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
@@ -18,12 +16,8 @@ data class AlertDynamicAction(
 )
 
 class AlertDynamicActionRepository(
-    private val api: ApiService = RetrofitClient.apiService
+    private val api: ApiService
 ) {
-
-    companion object {
-        private const val TAG = "XPERT_API"
-    }
 
     suspend fun getActions(
         userId: String,
@@ -43,12 +37,7 @@ class AlertDynamicActionRepository(
                     "Alert definition ID is missing."
                 }
 
-                Log.d(
-                    TAG,
-                    "Calling getAlertButtonDetails: " +
-                            "applicationId=$applicationId, " +
-                            "alertDefId=$alertDefId, userId=$userId"
-                )
+
 
                 val response = api.getAlertButtonDetails(
                     applicationId = applicationId.toString(),
@@ -57,7 +46,7 @@ class AlertDynamicActionRepository(
                     sessionId = sessionId
                 )
 
-                Log.d(TAG, "getAlertButtonDetails response: $response")
+
 
                 val obj = response.firstObject()
                     ?: error("No action details were returned by the server.")
@@ -82,12 +71,12 @@ class AlertDynamicActionRepository(
                 val promptsValue = obj.stringValue("confirmPrompt")
 
                 if (captionsValue.isBlank()) {
-                    Log.w(
-                        TAG,
-                        "No action captions returned. " +
-                                "applicationId=$applicationId, " +
-                                "alertDefId=$alertDefId"
-                    )
+
+
+
+
+
+
                     return@runCatching emptyList<AlertDynamicAction>()
                 }
 
@@ -112,14 +101,7 @@ class AlertDynamicActionRepository(
                         amsAction = amsActions.getOrElse(index) { "" }.trim(),
                         confirmationPrompt = prompts.getOrElse(index) { "" }.trim()
                     )
-                }.also { result ->
-                    Log.d(
-                        TAG,
-                        "Parsed dynamic action captions: ${result.map { it.caption }}"
-                    )
                 }
-            }.onFailure { exception ->
-                Log.e(TAG, "Failed to load alert button details", exception)
             }
         }
 
@@ -160,13 +142,13 @@ class AlertDynamicActionRepository(
                 it.aggregateAlertId.orEmpty()
             }
 
-            Log.d(
-                TAG,
-                "Calling batch processDynamicActions: " +
-                        "count=${alerts.size}, " +
-                        "applicationId=${applicationIds.first()}, " +
-                        "caption=${action.caption}"
-            )
+
+
+
+
+
+
+
 
             val response = api.processDynamicActions(
                 userId = userId,
@@ -180,7 +162,7 @@ class AlertDynamicActionRepository(
                 sessionId = sessionId
             )
 
-            Log.d(TAG, "Batch processDynamicActions response: $response")
+
 
             val objects = when {
                 response.isJsonArray -> response.asJsonArray.mapNotNull {
@@ -228,12 +210,6 @@ class AlertDynamicActionRepository(
             objects.first().stringValue("message").ifBlank {
                 "${action.caption} completed successfully."
             }
-        }.onFailure { exception ->
-            Log.e(
-                TAG,
-                "Failed to execute batch dynamic action: ${action.caption}",
-                exception
-            )
         }
     }
 
@@ -258,15 +234,15 @@ class AlertDynamicActionRepository(
                     "Alert dispatch ID is missing."
                 }
 
-                Log.d(
-                    TAG,
-                    "Calling processDynamicActions: " +
-                            "applicationId=$applicationId, " +
-                            "dispatchId=$dispatchId, " +
-                            "alertId=$alertId, " +
-                            "caption=${action.caption}, " +
-                            "amsAction=${action.amsAction}"
-                )
+
+
+
+
+
+
+
+
+
 
                 val response = api.processDynamicActions(
                     userId = userId,
@@ -280,7 +256,7 @@ class AlertDynamicActionRepository(
                     sessionId = sessionId
                 )
 
-                Log.d(TAG, "processDynamicActions response: $response")
+
 
                 val obj = response.firstObject()
                     ?: error("The server returned an empty action response.")
@@ -310,12 +286,6 @@ class AlertDynamicActionRepository(
                 obj.stringValue("message").ifBlank {
                     "${action.caption} completed successfully."
                 }
-            }.onFailure { exception ->
-                Log.e(
-                    TAG,
-                    "Failed to execute dynamic action: ${action.caption}",
-                    exception
-                )
             }
         }
 

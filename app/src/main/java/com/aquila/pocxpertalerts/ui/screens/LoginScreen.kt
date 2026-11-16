@@ -1,6 +1,9 @@
 package com.aquila.pocxpertalerts.ui.screens
 
 import android.provider.Settings
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,6 +18,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,6 +46,8 @@ import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.viewmodel.LoginViewModel
 import com.aquila.pocxpertalerts.viewmodel.LoginViewModelFactory
+import com.aquila.pocxpertalerts.notifications.FcmTokenRegistrar
+import com.google.firebase.messaging.FirebaseMessaging
 
 @Composable
 fun LoginScreen(
@@ -66,6 +74,11 @@ fun LoginScreen(
 
     val uiState by loginViewModel.uiState.collectAsState()
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { /* The system setting remains authoritative if permission is denied. */ }
+    )
+
     val deviceId = remember {
         Settings.Secure.getString(
             context.contentResolver,
@@ -82,6 +95,22 @@ fun LoginScreen(
                 } catch (_: Exception) {
                     // Login should still succeed if local persistence temporarily fails.
                 }
+
+                // Ask for notification permission after the user has signed in.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+
+                // Token registration is best-effort and must never block login/navigation.
+                FirebaseMessaging.getInstance().token
+                    .addOnSuccessListener { token ->
+                        FcmTokenRegistrar.enqueueRegistration(context, token, deviceId)
+                    }
                 onLoginSuccess(user)
             }
 

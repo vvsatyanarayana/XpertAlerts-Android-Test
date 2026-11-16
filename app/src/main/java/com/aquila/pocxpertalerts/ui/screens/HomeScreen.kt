@@ -72,6 +72,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.aquila.pocxpertalerts.R
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.data.repository.AlertDynamicAction
+import com.aquila.pocxpertalerts.data.local.SettingsDataStore
+import com.aquila.pocxpertalerts.data.remote.ApiService
+import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.repository.AlertDynamicActionRepository
 import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 import com.aquila.pocxpertalerts.ui.theme.AlertAccentColor
@@ -108,6 +111,7 @@ fun HomeScreen(
     onPasswordClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onAboutClick: () -> Unit,
+    apiService: ApiService,
     alerts: List<AlertDto> = emptyList(),
     userId: String = "",
     sessionId: String = "",
@@ -126,8 +130,8 @@ fun HomeScreen(
     }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val actionRepository = remember {
-        AlertDynamicActionRepository()
+    val actionRepository = remember(apiService) {
+        AlertDynamicActionRepository(apiService)
     }
     var dynamicActions by remember {
         mutableStateOf<List<AlertDynamicAction>>(emptyList())
@@ -303,7 +307,8 @@ fun HomeScreen(
                             coroutineScope.launch {
                                 isLoadingActions = true
                                 try {
-                                    val result = actionRepository.getActions(
+                                    val repository = actionRepository
+                                    val result = repository.getActions(
                                         userId = userId,
                                         sessionId = sessionId,
                                         applicationId = firstSelected!!.applicationId,
@@ -398,7 +403,8 @@ fun HomeScreen(
                                     coroutineScope.launch {
                                         isLoadingSwipeActions = true
                                         try {
-                                            val result = actionRepository.getActions(
+                                            val repository = actionRepository
+                                            val result = repository.getActions(
                                                 userId = userId,
                                                 sessionId = sessionId,
                                                 applicationId = alert.applicationId,
@@ -596,7 +602,8 @@ fun HomeScreen(
                             var failureMessage: String? = null
 
                             try {
-                                val result = actionRepository.executeActionForAlerts(
+                                val repository = actionRepository
+                                val result = repository.executeActionForAlerts(
                                     userId = userId,
                                     sessionId = sessionId,
                                     alerts = alertsToProcess,
@@ -1493,6 +1500,7 @@ private fun BottomTab(
 private fun HomeScreenPreview() {
     XpertAlertsTheme {
         HomeScreen(
+            apiService = RetrofitClient.createApiService(SettingsDataStore.DEFAULT_URL),
             onAlertClick = {},
             onSearchClick = {},
             onSubscriptionsClick = {},

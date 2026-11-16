@@ -1,53 +1,50 @@
-
 package com.aquila.pocxpertalerts.data.remote
 
-import android.util.Log
 import com.aquila.pocxpertalerts.BuildConfig
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private const val DEFAULT_BASE_URL =
-        "https://www.xpertalerts.com/ams/webservice/"
-
     fun createApiService(configuredUrl: String): ApiService {
-
         var normalizedUrl = configuredUrl.trim().trimEnd('/')
 
         require(
-            normalizedUrl.startsWith("https://") ||
-                    normalizedUrl.startsWith("http://")
+            normalizedUrl.startsWith("https://", ignoreCase = true) ||
+                    normalizedUrl.startsWith("http://", ignoreCase = true)
         ) {
             "Server URL must start with http:// or https://"
         }
 
-        if (normalizedUrl.endsWith("/check")) {
+        if (normalizedUrl.endsWith("/check", ignoreCase = true)) {
             normalizedUrl = normalizedUrl.removeSuffix("/check")
         }
 
         normalizedUrl += "/"
 
-        val loggingInterceptor =
-            HttpLoggingInterceptor { message ->
-                Log.d("ApiHttp", message)
-            }.apply {
-                level = HttpLoggingInterceptor.Level.BASIC
-            }
+        val parsedBaseUrl = normalizedUrl.toHttpUrlOrNull()
+            ?: throw IllegalArgumentException("Invalid server URL.")
+        require(parsedBaseUrl.query == null && parsedBaseUrl.fragment == null) {
+            "Server URL must not contain a query string or fragment."
+        }
 
-        val clientBuilder =
-            if (BuildConfig.DEBUG) {
-                UnsafeSslHelper.okHttpClient.newBuilder()
-            } else {
-                OkHttpClient.Builder()
-            }
+        // Keep the app's existing local-development SSL behaviour in Debug.
+        // Release builds always use the platform's normal certificate validation.
+        val clientBuilder = if (BuildConfig.DEBUG) {
+            UnsafeSslHelper.okHttpClient.newBuilder()
+        } else {
+            OkHttpClient.Builder()
+        }
+
+        // Never log request/response bodies. Redact credentials in query strings
+        // because the existing backend contract currently uses GET parameters.
+
 
         val client = clientBuilder
             .addInterceptor(SessionExpirationInterceptor())
-            .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -59,10 +56,5 @@ object RetrofitClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
-    }
-
-    // Default service for legacy callers only.
-    val apiService: ApiService by lazy {
-        createApiService(DEFAULT_BASE_URL)
     }
 }

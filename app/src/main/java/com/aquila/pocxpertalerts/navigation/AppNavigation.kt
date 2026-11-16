@@ -1,7 +1,6 @@
 
 package com.aquila.pocxpertalerts.navigation
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +25,12 @@ import androidx.navigation.compose.rememberNavController
 import com.aquila.pocxpertalerts.data.local.SearchAlertsPersistence
 import com.aquila.pocxpertalerts.data.local.SettingsDataStore
 import com.aquila.pocxpertalerts.data.local.UserSessionDataStore
+import com.aquila.pocxpertalerts.notifications.FcmTokenRegistrar
+import com.aquila.pocxpertalerts.notifications.NotificationHistoryStore
+import com.aquila.pocxpertalerts.notifications.NotificationOpenRequest
+import com.aquila.pocxpertalerts.notifications.LocalNotification
+import com.google.firebase.messaging.FirebaseMessaging
+import android.provider.Settings
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.data.remote.RetrofitClient
 import com.aquila.pocxpertalerts.data.remote.SessionExpirationManager
@@ -72,9 +77,7 @@ import com.aquila.pocxpertalerts.viewmodel.ForwardAlertsViewModelFactory
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModelFactory
 
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -151,7 +154,10 @@ private fun defaultAlertApiDate(daysFromToday: Int): String {
 // ============================================================
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    notificationOpenRequest: NotificationOpenRequest? = null,
+    onNotificationOpenRequestConsumed: () -> Unit = {}
+) {
 
     val navController = rememberNavController()
     val appContext = LocalContext.current.applicationContext
@@ -168,6 +174,9 @@ fun AppNavigation() {
     val userSessionDataStore = remember(appContext) {
         UserSessionDataStore(appContext)
     }
+    val notificationHistoryStore = remember(appContext) {
+        NotificationHistoryStore(appContext)
+    }
 
     // --------------------------------------------------------
     // SHARED API SERVICE
@@ -176,16 +185,12 @@ fun AppNavigation() {
     // service. Its base URL comes from the saved Settings URL.
     // --------------------------------------------------------
 
-    val apiService = remember(settingsDataStore) {
-        val configuredUrl = runBlocking {
-            settingsDataStore.webServiceUrl.first()
-        }
+    val configuredUrl by settingsDataStore.webServiceUrl.collectAsState(
+        initial = SettingsDataStore.DEFAULT_URL
+    )
 
-        Log.d(
-            "ApiConfiguration",
-            "Creating shared API service using configured URL: $configuredUrl"
-        )
-
+    // Rebuild the shared Retrofit service whenever Settings saves a new URL.
+    val apiService = remember(configuredUrl) {
         RetrofitClient.createApiService(configuredUrl)
     }
 
@@ -216,7 +221,10 @@ fun AppNavigation() {
     }
 
     val archivedViewModel: ArchivedAlertsViewModel =
-        viewModel(factory = archivedFactory)
+        viewModel(
+            key = "archived_${configuredUrl.hashCode()}",
+            factory = archivedFactory
+        )
 
     val archivedAlerts by archivedViewModel.alerts.collectAsState()
     val archivedLoading by archivedViewModel.isLoading.collectAsState()
@@ -230,12 +238,15 @@ fun AppNavigation() {
         SearchAlertsPersistence(appContext)
     }
 
-    val alertsFactory = remember(settingsDataStore) {
-        AlertsViewModelFactory(settingsDataStore)
+    val alertsFactory = remember(apiService) {
+        AlertsViewModelFactory(apiService)
     }
 
     val alertsViewModel: AlertsViewModel =
-        viewModel(factory = alertsFactory)
+        viewModel(
+            key = "alerts_${configuredUrl.hashCode()}",
+            factory = alertsFactory
+        )
 
     val alertsLoading by alertsViewModel.isLoading.collectAsState()
 
@@ -261,7 +272,10 @@ fun AppNavigation() {
     }
 
     val forwardViewModel: ForwardAlertsViewModel =
-        viewModel(factory = forwardFactory)
+        viewModel(
+            key = "forward_${configuredUrl.hashCode()}",
+            factory = forwardFactory
+        )
 
     val forwardListState by forwardViewModel.listState.collectAsState()
     val forwardFormState by forwardViewModel.formState.collectAsState()
@@ -337,6 +351,15 @@ fun AppNavigation() {
 
                 SessionExpirationManager.resetForNewSession()
 
+                // Re-register the FCM token when an existing session is restored.
+                val deviceId = Settings.Secure.getString(
+                    appContext.contentResolver,
+                    Settings.Secure.ANDROID_ID
+                ).orEmpty()
+                FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                    FcmTokenRegistrar.enqueueRegistration(appContext, token, deviceId)
+                }
+
                 navController.navigate(Screen.Home.route) {
                     popUpTo(Screen.Login.route) {
                         inclusive = true
@@ -344,6 +367,50 @@ fun AppNavigation() {
                     launchSingleTop = true
                 }
             }
+        }
+    }
+
+    // --------------------------------------------------------
+    // OPEN A PUSH NOTIFICATION AFTER THE USER SESSION IS READY
+    // --------------------------------------------------------
+
+    LaunchedEffect(notificationOpenRequest, loggedInUser?.id) {
+        val request = notificationOpenRequest
+        val user = loggedInUser
+        if (request != null && user != null) {
+            val notificationId = request.notificationId
+                ?: "opened_${System.currentTimeMillis()}"
+            if (!request.title.isNullOrBlank() || !request.body.isNullOrBlank()) {
+                notificationHistoryStore.add(
+                    user.id.toString(),
+                    LocalNotification(
+                        id = notificationId,
+                        title = request.title ?: "XpertAlerts",
+                        body = request.body.orEmpty(),
+                        receivedAt = System.currentTimeMillis(),
+                        alertId = request.alertId,
+                        isRead = true
+                    )
+                )
+            }
+
+            val alertId = request.alertId
+            if (alertId.isNullOrBlank()) {
+                navController.navigate(Screen.Notifications.route) { launchSingleTop = true }
+            } else {
+                openAlertFromNotification(
+                    alertId,
+                    alertsViewModel,
+                    searchedAlerts,
+                    user,
+                    searchPersistence,
+                    navController,
+                    scope,
+                    appContext,
+                    onAlertsLoaded = { searchedAlerts = it }
+                )
+            }
+            onNotificationOpenRequestConsumed()
         }
     }
 
@@ -358,6 +425,7 @@ fun AppNavigation() {
             if (loggedInUser != null) {
 
                 loggedInUser = null
+                FcmTokenRegistrar.onLogout(appContext)
 
                 scope.launch {
                     try {
@@ -489,6 +557,7 @@ fun AppNavigation() {
                 }
 
                 HomeScreen(
+                    apiService = apiService,
                     alerts = searchedAlerts,
                     userId = loggedInUser?.id?.toString().orEmpty(),
                     sessionId = loggedInUser?.sessionId.orEmpty(),
@@ -553,12 +622,6 @@ fun AppNavigation() {
                                 Screen.AlertDetail.createRoute(alertId)
                             )
 
-                        } else {
-
-                            Log.e(
-                                "AlertsNavigation",
-                                "Alert not found: $alertId"
-                            )
                         }
                     },
 
@@ -603,6 +666,7 @@ fun AppNavigation() {
                     onLogoutClick = {
 
                         loggedInUser = null
+                        FcmTokenRegistrar.onLogout(appContext)
 
                         scope.launch {
                             try {
@@ -652,6 +716,7 @@ fun AppNavigation() {
 
                     AlertDetailScreen(
                         alert = alert,
+                        apiService = apiService,
                         userId = loggedInUser?.id?.toString().orEmpty(),
                         sessionId = loggedInUser?.sessionId.orEmpty(),
 
@@ -692,10 +757,25 @@ fun AppNavigation() {
             // =================================================
 
             composable(Screen.Notifications.route) {
-
+                val currentUserId = loggedInUser?.id?.toString().orEmpty()
                 NotificationsScreen(
+                    userId = currentUserId,
+                    historyStore = notificationHistoryStore,
                     onBackClick = {
                         navController.popBackStack()
+                    },
+                    onNotificationClick = { notification ->
+                        openAlertFromNotification(
+                            notification.alertId,
+                            alertsViewModel,
+                            searchedAlerts,
+                            loggedInUser,
+                            searchPersistence,
+                            navController,
+                            scope,
+                            appContext,
+                            onAlertsLoaded = { searchedAlerts = it }
+                        )
                     }
                 )
             }
@@ -860,6 +940,14 @@ fun AppNavigation() {
                         } catch (_: Exception) {
                         }
 
+                        val deviceId = Settings.Secure.getString(
+                            appContext.contentResolver,
+                            Settings.Secure.ANDROID_ID
+                        ).orEmpty()
+                        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                            FcmTokenRegistrar.enqueueRegistration(appContext, token, deviceId)
+                        }
+
                         SessionExpirationManager.resetForNewSession()
 
                         navController.navigate(Screen.Home.route) {
@@ -985,10 +1073,10 @@ fun AppNavigation() {
 
                         if (user == null) {
 
-                            Log.e(
-                                "AlertsAPI",
-                                "No logged-in user is available"
-                            )
+
+
+
+
 
                         } else {
 
@@ -1019,21 +1107,6 @@ fun AppNavigation() {
                                         userId = user.id.toString(),
                                         alerts = results
                                     )
-
-                                    Log.d(
-                                        "AlertsNavigation",
-                                        "Search succeeded: ${results.size} alerts"
-                                    )
-
-                                    results.forEach { alert ->
-
-                                        Log.d(
-                                            "AlertsAPI",
-                                            "id=${alert.id}, " +
-                                                    "alertId=${alert.alertId}, " +
-                                                    "subject=${alert.subject}"
-                                        )
-                                    }
 
                                     navController.popBackStack(
                                         route = Screen.Home.route,
@@ -1119,10 +1192,10 @@ fun AppNavigation() {
 
                     onEditClick = { subscriptionId ->
 
-                        Log.d(
-                            "SubscriptionNavigation",
-                            "Opening subscription details for ID: $subscriptionId"
-                        )
+
+
+
+
 
                         navController.navigate(
                             Screen.SubscriptionDetails.createRoute(
@@ -1275,10 +1348,7 @@ fun AppNavigation() {
                             sessionId = sessionId
                         )
 
-                        Log.d(
-                            "SubscriptionSearch",
-                            "getApplicationList response: $response"
-                        )
+
 
                         val parsedApplications =
                             mutableListOf<ApplicationOption>()
@@ -1334,10 +1404,10 @@ fun AppNavigation() {
                                     "The server returned no application records."
                             }
 
-                            Log.d(
-                                "SubscriptionSearch",
-                                "Parsed applications: $applicationOptions"
-                            )
+
+
+
+
 
                         } else {
 
@@ -1354,11 +1424,7 @@ fun AppNavigation() {
                         applicationsError =
                             e.message ?: "Unable to load applications."
 
-                        Log.e(
-                            "SubscriptionSearch",
-                            "Failed to load applications",
-                            e
-                        )
+
 
                     } finally {
 
@@ -1377,12 +1443,12 @@ fun AppNavigation() {
                             applicationId,
                             searchActive ->
 
-                        Log.d(
-                            "SubscriptionSearch",
-                            "Search filters: name=$alertName, " +
-                                    "applicationId=$applicationId, " +
-                                    "searchActive=$searchActive"
-                        )
+
+
+
+
+
+
 
                         subscriptionViewModel.loadSubscriptions(
                             userId = userId,
@@ -1659,4 +1725,80 @@ fun AppNavigation() {
             }
         }
     }
+}
+
+
+private fun openAlertFromNotification(
+    alertId: String?,
+    alertsViewModel: AlertsViewModel,
+    currentAlerts: List<AlertDto>,
+    user: User?,
+    searchPersistence: SearchAlertsPersistence,
+    navController: androidx.navigation.NavHostController,
+    scope: kotlinx.coroutines.CoroutineScope,
+    context: android.content.Context,
+    onAlertsLoaded: (List<AlertDto>) -> Unit
+) {
+    if (user == null || alertId.isNullOrBlank()) {
+        navController.navigate(Screen.Notifications.route) { launchSingleTop = true }
+        return
+    }
+
+    val cached = currentAlerts.firstOrNull {
+        it.alertId.toString() == alertId || it.id.toString() == alertId
+    }
+    if (cached != null) {
+        navController.navigate(Screen.AlertDetail.createRoute(alertId)) {
+            launchSingleTop = true
+        }
+        return
+    }
+
+    // FCM commonly carries only an alert identifier. Fetch the current alert list
+    // through the existing API contract before opening the detail screen.
+    alertsViewModel.searchAlerts(
+        userId = user.id.toString(),
+        startDate = defaultAlertApiDate(-30),
+        endDate = defaultAlertApiDate(0),
+        keyword = "",
+        viewByFlag = "0",
+        applicationId = "0",
+        alertDefinitionId = "0",
+        sessionId = user.sessionId.orEmpty(),
+        onSuccess = { refreshed ->
+            onAlertsLoaded(refreshed)
+            scope.launch {
+                searchPersistence.saveAlerts(user.id.toString(), refreshed)
+                val match = refreshed.firstOrNull {
+                    it.alertId.toString() == alertId || it.id.toString() == alertId
+                }
+                if (match != null) {
+                    navController.navigate(Screen.AlertDetail.createRoute(alertId)) {
+                        launchSingleTop = true
+                    }
+                } else {
+                    android.widget.Toast.makeText(
+                        context,
+                        "The alert linked to this notification is no longer available.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    navController.navigate(Screen.Notifications.route) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+        },
+        onFailure = { error ->
+            scope.launch {
+                android.widget.Toast.makeText(
+                    context,
+                    error.message ?: "Unable to load the alert linked to this notification.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                navController.navigate(Screen.Notifications.route) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    )
 }

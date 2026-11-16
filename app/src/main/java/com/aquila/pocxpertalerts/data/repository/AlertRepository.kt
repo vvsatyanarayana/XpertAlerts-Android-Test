@@ -1,6 +1,5 @@
 package com.aquila.pocxpertalerts.data.repository
 
-import android.util.Log
 import com.aquila.pocxpertalerts.data.model.AlertDto
 import com.aquila.pocxpertalerts.data.remote.ApiService
 import com.google.gson.Gson
@@ -9,7 +8,6 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.HttpException
 
 /**
  * Represents an option returned by a backend dropdown API.
@@ -24,12 +22,6 @@ class AlertRepository(
 ) {
 
     private val gson = Gson()
-
-    companion object {
-        private const val TAG = "AlertRepository"
-        private const val APPLICATION_TAG = "ApplicationAPI"
-        private const val DEFINITION_TAG = "AlertDefinitionAPI"
-    }
 
     /**
      * Fetch alerts using the existing getAlertsForDevices API.
@@ -59,32 +51,18 @@ class AlertRepository(
                 "sessionId" to sessionId
             )
 
-            Log.d(TAG, "Calling getAlertsForDevices")
-            Log.d(TAG, "Search parameters: $parameters")
+
+
 
             val response = apiService.getAlertsForDevices(parameters)
 
-            Log.d(TAG, "getAlertsForDevices response: $response")
+
 
             val alerts = parseAlertsResponse(response)
 
             Result.success(alerts)
 
         } catch (exception: Exception) {
-
-            Log.e(
-                TAG,
-                "Failed to fetch alerts",
-                exception
-            )
-
-            if (exception is HttpException) {
-                Log.e(
-                    TAG,
-                    "HTTP error code: ${exception.code()}"
-                )
-            }
-
             Result.failure(exception)
         }
     }
@@ -105,10 +83,7 @@ class AlertRepository(
                 sessionId = sessionId
             )
 
-            Log.d(
-                APPLICATION_TAG,
-                "Raw getApplicationList response: $response"
-            )
+
 
             parseDropdownResponse(
                 response = response,
@@ -126,11 +101,7 @@ class AlertRepository(
 
         } catch (exception: Exception) {
 
-            Log.e(
-                APPLICATION_TAG,
-                "Failed to fetch applications",
-                exception
-            )
+
 
             Result.failure(exception)
         }
@@ -154,10 +125,7 @@ class AlertRepository(
                 sessionId = sessionId
             )
 
-            Log.d(
-                DEFINITION_TAG,
-                "Raw getAlertDefinitionList response: $response"
-            )
+
 
             parseDropdownResponse(
                 response = response,
@@ -178,11 +146,7 @@ class AlertRepository(
 
         } catch (exception: Exception) {
 
-            Log.e(
-                DEFINITION_TAG,
-                "Failed to fetch alert definitions",
-                exception
-            )
+
 
             Result.failure(exception)
         }
@@ -299,10 +263,9 @@ class AlertRepository(
 
         if (!response.isJsonArray) {
 
-            val message =
-                "Expected a JSON array for dropdown response: $response"
+            val message = "Unexpected server response for dropdown data."
 
-            Log.e(TAG, message)
+
 
             return Result.failure(
                 IllegalStateException(message)
@@ -345,19 +308,19 @@ class AlertRepository(
 
             } else {
 
-                Log.w(
-                    TAG,
-                    "Skipping invalid dropdown item: $item"
-                )
+
+
+
+
 
                 null
             }
         }
 
-        Log.d(
-            TAG,
-            "Parsed ${options.size} dropdown options"
-        )
+
+
+
+
 
         return Result.success(options)
     }

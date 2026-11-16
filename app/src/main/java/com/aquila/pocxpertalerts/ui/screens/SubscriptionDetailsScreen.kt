@@ -2,7 +2,6 @@
 package com.aquila.pocxpertalerts.ui.screens
 
 import android.app.Activity
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -287,13 +286,7 @@ fun SubscriptionDetailsScreen(
 
             formInitialized = true
 
-            Log.d(
-                "SubscriptionDetails",
-                "Subscription ID: $subscriptionId, " +
-                        "Alert name: ${details.alertName}, " +
-                        "Email address available: ${email.isNotBlank()}, " +
-                        "Mail enabled: $mailEnabled"
-            )
+
         }
     }
 

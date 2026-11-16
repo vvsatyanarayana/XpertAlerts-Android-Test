@@ -1,8 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
 }
 
@@ -68,11 +66,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui)
-    implementation(libs.firebase.appdistribution.gradle)
 
-    implementation(libs.hilt.android)
-    implementation(libs.androidx.hilt.navigation.compose)
-    ksp(libs.hilt.android.compiler)
 
     testImplementation(libs.junit)
 
@@ -94,4 +88,5 @@ dependencies {
 
 
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")}

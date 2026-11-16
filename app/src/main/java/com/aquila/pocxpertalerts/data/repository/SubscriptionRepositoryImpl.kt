@@ -1,7 +1,6 @@
 
 package com.aquila.pocxpertalerts.data.repository
 
-import android.util.Log
 import com.aquila.pocxpertalerts.data.model.SubscriptionDto
 import com.aquila.pocxpertalerts.data.remote.ApiService
 import com.google.gson.Gson
@@ -140,10 +139,7 @@ class SubscriptionRepositoryImpl(
             sessionId = sessionId
         )
 
-        Log.d(
-            "SubscriptionMapping",
-            "Raw getUserSubscriptionList response: $response"
-        )
+
 
         response.checkError()
 
@@ -157,17 +153,6 @@ class SubscriptionRepositoryImpl(
                 }.getOrNull()
             }
             .filter { it.errorCode == 0 }
-            .also { subscriptions ->
-                subscriptions.forEach { subscription ->
-                    Log.d(
-                        "SubscriptionMapping",
-                        "userSubId=${subscription.userSubId}, " +
-                                "alertName=${subscription.alertName}, " +
-                                "alertDefName=${subscription.alertDefName}, " +
-                                "applicationName=${subscription.applicationName}"
-                    )
-                }
-            }
     }
 
     override suspend fun getSubscriptionDetails(
@@ -180,10 +165,7 @@ class SubscriptionRepositoryImpl(
             sessionId = sessionId
         )
 
-        Log.d(
-            "SubscriptionMapping",
-            "Raw subscription details response: $response"
-        )
+
 
         response.checkError()
 
@@ -245,10 +227,10 @@ class SubscriptionRepositoryImpl(
         sessionId: String
     ): Result<List<SubscriptionAlertDefinition>> = runCatching {
 
-        Log.d(
-            "SubscriptionDefinitions",
-            "Request: applicationId=$applicationId, alertFlag=$alertFlag"
-        )
+
+
+
+
 
         val response = apiService.getAlertDefinitionList(
             applicationId = applicationId,
@@ -256,10 +238,7 @@ class SubscriptionRepositoryImpl(
             sessionId = sessionId
         )
 
-        Log.d(
-            "SubscriptionDefinitions",
-            "Raw API response: $response"
-        )
+
 
         response.checkError()
 
@@ -288,10 +267,10 @@ class SubscriptionRepositoryImpl(
             )
 
             if (id == null || name == null) {
-                Log.w(
-                    "SubscriptionDefinitions",
-                    "Skipping definition with missing ID/name: $obj"
-                )
+
+
+
+
                 null
             } else {
                 SubscriptionAlertDefinition(
@@ -301,13 +280,13 @@ class SubscriptionRepositoryImpl(
             }
         }
 
-        Log.d(
-            "SubscriptionDefinitions",
-            "Parsed ${definitions.size} definitions: " +
-                    definitions.joinToString {
-                        "${it.id}=${it.name}"
-                    }
-        )
+
+
+
+
+
+
+
 
         definitions
     }
@@ -332,10 +311,7 @@ class SubscriptionRepositoryImpl(
 
         response.checkError()
 
-        Log.d(
-            "SubscriptionDuplicate",
-            "Duplicate-check response: $response"
-        )
+
 
         fun parseDuplicateValue(element: JsonElement): Boolean? {
 
@@ -439,16 +415,15 @@ class SubscriptionRepositoryImpl(
 
         val isDuplicate = parseDuplicateValue(response)
             ?: throw IllegalStateException(
-                "Could not determine duplicate status from the server response. " +
-                        "Check the SubscriptionDuplicate Logcat output."
+                "Could not determine duplicate status from the server response. Please try again."
             )
 
-        Log.d(
-            "SubscriptionDuplicate",
-            "Parsed duplicate status: $isDuplicate, " +
-                    "userSubId=$userSubId, applicationId=$applicationId, " +
-                    "alertDefinitionId=$alertDefinitionId"
-        )
+
+
+
+
+
+
 
         isDuplicate
     }
@@ -457,12 +432,12 @@ class SubscriptionRepositoryImpl(
         subscription: SubscriptionSaveRequest
     ): Result<Unit> = runCatching {
 
-        Log.d(
-            "SubscriptionSave",
-            "Saving subscription: userSubId=${subscription.userSubId}, " +
-                    "applicationId=${subscription.applicationId}, " +
-                    "alertDefId=${subscription.alertDefId}"
-        )
+
+
+
+
+
+
 
         val response = apiService.saveUserSubscription(
             userSubId = subscription.userSubId,
@@ -481,10 +456,7 @@ class SubscriptionRepositoryImpl(
             sessionId = subscription.sessionId
         )
 
-        Log.d(
-            "SubscriptionSave",
-            "Save API response: $response"
-        )
+
 
         response.checkError()
     }
