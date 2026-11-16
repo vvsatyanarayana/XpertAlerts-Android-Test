@@ -94,13 +94,17 @@ class SettingsViewModel(
 
             val testResult = withContext(Dispatchers.IO) { testServer(url) }
             if (testResult.second) {
+
                 persistUrl(url)
+
             } else {
+
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
-                    message = null,
+                    message = testResult.first,
                     isError = true,
-                    showSaveAnywayConfirmation = true
+                    showSaveAnywayConfirmation = false,
+                    saveCompleted = false
                 )
             }
         }
@@ -161,28 +165,49 @@ class SettingsViewModel(
         }
     }
 
-    private suspend fun testServer(url: String): Pair<String, Boolean> = withContext(Dispatchers.IO) {
+
+    private suspend fun testServer(
+        url: String
+    ): Pair<String, Boolean> = withContext(Dispatchers.IO) {
+
         try {
-            val response = RetrofitClient.createApiService(url).testServerConnection()
-            val successful = response.code() == 200
-            response.errorBody()?.close()
-            response.body()?.close()
-            if (successful) {
+            val response = RetrofitClient
+                .createApiService(url)
+                .testServerConnection()
+
+            val isConfigurationValid =
+                response.isSuccessful &&
+                        response.body()?.check == "1"
+
+            if (isConfigurationValid) {
                 "Configuration test successful" to true
             } else {
-                "Configuration test failed. Try again..." to false
+                "Configuration failed, Please check url" to false
             }
+
         } catch (error: Exception) {
+
             val message = when (error) {
-                is UnknownHostException -> "Please check your internet connection"
-                is SocketTimeoutException -> "Configuration test failed. The server timed out. Try again..."
-                is ConnectException -> "Configuration test failed. Unable to connect to server."
-                is SSLException -> "Configuration test failed. Secure connection could not be established."
-                else -> "Configuration test failed. Try again..."
+                is UnknownHostException ->
+                    "Please check your internet connection"
+
+                is SocketTimeoutException ->
+                    "Configuration test failed. Server timed out."
+
+                is ConnectException ->
+                    "Configuration test failed. Unable to connect."
+
+                is SSLException ->
+                    "Configuration test failed. Secure connection error."
+
+                else ->
+                    "Configuration failed, Please check url"
             }
+
             message to false
         }
     }
+
 
     private fun showResult(message: String, isError: Boolean) {
         _uiState.value = _uiState.value.copy(

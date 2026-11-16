@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     private const val DEFAULT_BASE_URL =
-        "https://testapps.aquilasoftware.com/ams/webservice/"
+        "https://www.xpertalerts.com/ams/webservice/"
 
     fun createApiService(configuredUrl: String): ApiService {
 
@@ -25,26 +25,25 @@ object RetrofitClient {
             "Server URL must start with http:// or https://"
         }
 
-        // Remove /check if an older saved URL contains it.
         if (normalizedUrl.endsWith("/check")) {
             normalizedUrl = normalizedUrl.removeSuffix("/check")
         }
 
         normalizedUrl += "/"
 
-        val loggingInterceptor = HttpLoggingInterceptor { message ->
-            Log.d("ApiHttp", message)
-        }.apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
+        val loggingInterceptor =
+            HttpLoggingInterceptor { message ->
+                Log.d("ApiHttp", message)
+            }.apply {
+                level = HttpLoggingInterceptor.Level.BASIC
+            }
 
-        // Debug: use the existing SSL-bypass client.
-        // Release: use normal certificate and hostname validation.
-        val clientBuilder = if (BuildConfig.DEBUG) {
-            UnsafeSslHelper.okHttpClient.newBuilder()
-        } else {
-            OkHttpClient.Builder()
-        }
+        val clientBuilder =
+            if (BuildConfig.DEBUG) {
+                UnsafeSslHelper.okHttpClient.newBuilder()
+            } else {
+                OkHttpClient.Builder()
+            }
 
         val client = clientBuilder
             .addInterceptor(SessionExpirationInterceptor())
@@ -62,7 +61,7 @@ object RetrofitClient {
             .create(ApiService::class.java)
     }
 
-    // Compatibility for existing callers.
+    // Default service for legacy callers only.
     val apiService: ApiService by lazy {
         createApiService(DEFAULT_BASE_URL)
     }

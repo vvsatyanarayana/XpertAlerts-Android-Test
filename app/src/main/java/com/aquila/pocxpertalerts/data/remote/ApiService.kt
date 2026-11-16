@@ -7,9 +7,13 @@ import retrofit2.http.Query
 import retrofit2.http.QueryMap
 import okhttp3.ResponseBody
 import retrofit2.Response
+
+data class ServerCheckResponse(
+    val check: String?
+)
 interface ApiService {
     @GET("check")
-    suspend fun testServerConnection(): Response<ResponseBody>
+    suspend fun testServerConnection(): Response<ServerCheckResponse>
     @GET("authenticateUserForDevices")
     suspend fun authenticateUserForDevices(
         @Query("username") username: String,

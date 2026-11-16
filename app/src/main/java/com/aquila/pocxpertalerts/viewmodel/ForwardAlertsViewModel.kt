@@ -49,8 +49,7 @@ data class CreateForwardAlertState(
 )
 
 class ForwardAlertsViewModel(
-    private val repository: ForwardAlertsRepository =
-        ForwardAlertsRepository()
+    private val repository: ForwardAlertsRepository
 ) : ViewModel() {
 
     private val _listState =

@@ -36,6 +36,7 @@ class LoginRepository(
             // 1. Read the latest saved server URL.
             val configuredUrl =
                 settingsDataStore.webServiceUrl.first().trim()
+            Log.d(TAG, "Configured server host: ${URL(configuredUrl).host}")
 
             if (configuredUrl.isBlank()) {
                 return@withContext Result.failure(
@@ -69,17 +70,17 @@ class LoginRepository(
             Log.d(TAG, "Testing configured server URL")
 
             // 3. Test the configured server.
-            val responseCode = testConfiguredUrl(configuredUrl)
+            val serverValid = testConfiguredUrl(configuredUrl)
 
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.e(TAG, "Server test failed: HTTP $responseCode")
-
+            if (!serverValid) {
                 return@withContext Result.failure(
                     IllegalStateException(
-                        "Server test failed: HTTP $responseCode. Login cancelled."
+                        "Server configuration failed. Please check the URL."
                     )
                 )
             }
+
+            Log.d(TAG, "Server validation successful")
 
             Log.d(TAG, "Server test succeeded")
 
@@ -116,14 +117,28 @@ class LoginRepository(
         }
     }
 
-    private fun testConfiguredUrl(urlText: String): Int {
+
+    private fun testConfiguredUrl(urlText: String): Boolean {
+
         var connection: HttpURLConnection? = null
 
         try {
-            connection = URL(urlText)
+            // Remove trailing slash.
+            val baseUrl = urlText.trim().trimEnd('/')
+
+            // Build the correct server test endpoint.
+            val checkUrl = if (baseUrl.endsWith("/check")) {
+                baseUrl
+            } else {
+                "$baseUrl/check"
+            }
+
+            Log.d(TAG, "Testing server connection")
+
+            connection = URL(checkUrl)
                 .openConnection() as HttpURLConnection
 
-            // Bypass SSL certificate and hostname checks in Debug only.
+            // Debug SSL configuration.
             if (BuildConfig.DEBUG && connection is HttpsURLConnection) {
                 connection.sslSocketFactory =
                     UnsafeSslHelper.sslSocketFactory
@@ -137,10 +152,33 @@ class LoginRepository(
             connection.readTimeout = TIMEOUT_MS
             connection.useCaches = false
 
-            return connection.responseCode
+            val responseCode = connection.responseCode
+
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                Log.e(TAG, "Server check HTTP status: $responseCode")
+                return false
+            }
+
+            // Read actual server JSON response.
+            val responseBody = connection.inputStream
+                .bufferedReader()
+                .use { it.readText() }
+
+            Log.d(TAG, "Server check response: $responseBody")
+
+            // Match the original iOS validation.
+            val json = org.json.JSONObject(responseBody)
+            val checkValue = json.optString("check")
+
+            return checkValue == "1"
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Server validation failed", e)
+            return false
 
         } finally {
             connection?.disconnect()
         }
     }
+
 }
