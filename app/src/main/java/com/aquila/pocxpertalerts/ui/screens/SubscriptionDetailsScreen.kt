@@ -64,7 +64,12 @@ import com.aquila.pocxpertalerts.ui.theme.TextGray
 import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
 import com.aquila.pocxpertalerts.viewmodel.SubscriptionsViewModel
-
+import androidx.compose.ui.tooling.preview.Preview
+import com.aquila.pocxpertalerts.data.repository.SubscriptionRepository
+import com.aquila.pocxpertalerts.data.repository.SubscriptionApplication
+import com.aquila.pocxpertalerts.data.repository.SubscriptionAlertDefinition
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
+import kotlinx.coroutines.runBlocking
 private val SubscriptionGreen = Color(0xFF008F54)
 private val SubscriptionFieldBorder = Color(0xFFB8B8B8)
 
@@ -773,7 +778,69 @@ private fun SubscriptionTextField(
         )
     )
 }
+// ------------------------------------------------------------
+// PREVIEW ONLY - FAKE SUBSCRIPTION REPOSITORY
+// ------------------------------------------------------------
 
+private class PreviewSubscriptionRepository : SubscriptionRepository {
+
+    override suspend fun getSubscriptions(
+        userId: String,
+        sessionId: String,
+        applicationId: String,
+        searchName: String,
+        searchActive: Int
+    ) = Result.success(emptyList<com.aquila.pocxpertalerts.data.model.SubscriptionDto>())
+
+    override suspend fun getSubscriptionDetails(
+        userSubId: Long,
+        sessionId: String
+    ): Result<com.aquila.pocxpertalerts.data.model.SubscriptionDto> {
+        return Result.failure(
+            Exception("Preview does not load subscription details")
+        )
+    }
+
+    override suspend fun getApplications(
+        userId: String,
+        userTypeId: String,
+        sessionId: String
+    ) = Result.success(
+        listOf(
+            SubscriptionApplication("1", "XpertAlerts"),
+            SubscriptionApplication("2", "CaterXpert"),
+            SubscriptionApplication("3", "Business CRM")
+        )
+    )
+
+    override suspend fun getAlertDefinitions(
+        applicationId: String,
+        alertFlag: String,
+        userId: String,
+        sessionId: String
+    ) = Result.success(
+        listOf(
+            SubscriptionAlertDefinition("101", "New Alert"),
+            SubscriptionAlertDefinition("102", "Critical Alert"),
+            SubscriptionAlertDefinition("103", "System Notification")
+        )
+    )
+
+    override suspend fun checkDuplicate(
+        userId: String,
+        applicationId: String,
+        alertDefinitionId: String,
+        alertFlag: String,
+        userSubId: String,
+        sessionId: String
+    ) = Result.success(false)
+
+    override suspend fun saveSubscription(
+        subscription: SubscriptionSaveRequest
+    ): Result<Unit> {
+        return Result.success(Unit)
+    }
+}
 // ------------------------------------------------------------
 // SHARED-THEME DROPDOWN
 // ------------------------------------------------------------
@@ -864,5 +931,36 @@ private fun <T> SubscriptionDropdown(
                 )
             }
         }
+    }
+}
+// ------------------------------------------------------------
+// SUBSCRIPTION DETAILS PREVIEW
+// ------------------------------------------------------------
+
+@Preview(
+    name = "Create Subscription",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=852dp"
+)
+@Composable
+private fun SubscriptionDetailsScreenPreview() {
+
+    val previewViewModel = remember {
+        SubscriptionsViewModel(
+            PreviewSubscriptionRepository()
+        )
+    }
+
+    XpertAlertsTheme {
+        SubscriptionDetailsScreen(
+            subscriptionId = "new",
+            viewModel = previewViewModel,
+            userId = "33655",
+            userTypeId = "1",
+            sessionId = "preview-session",
+            onBackClick = {},
+            onSaveSuccess = {}
+        )
     }
 }

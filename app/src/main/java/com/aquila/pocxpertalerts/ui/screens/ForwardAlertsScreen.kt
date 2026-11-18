@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquila.pocxpertalerts.ui.components.AppListSearchBar
@@ -466,4 +467,53 @@ private fun ForwardAlertCard(
             }
         }
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ForwardAlertsScreenPreview() {
+
+    val sampleAlerts = listOf(
+        ForwardAlertItem(
+            id = "1",
+            userName = "Satyanarayana",
+            email = "satya@gmail.com",
+            applicationName = "XpertAlerts",
+            active = true
+        ),
+        ForwardAlertItem(
+            id = "2",
+            userName = "Rahul Kumar",
+            email = "rahul@gmail.com",
+            applicationName = "CaterXpert",
+            active = false
+        ),
+        ForwardAlertItem(
+            id = "3",
+            userName = "Venkat",
+            email = "venkat@gmail.com",
+            applicationName = "XpertAlerts",
+            active = true
+        ),
+        ForwardAlertItem(
+            id = "4",
+            userName = "Kiran",
+            email = "kiran@gmail.com",
+            applicationName = "Business Manager",
+            active = false
+        )
+    )
+
+    ForwardAlertsScreen(
+        onBackClick = {},
+        onCreateClick = {},
+        onEditClick = {},
+        onSearchClick = {},
+        alerts = sampleAlerts,
+        isLoading = false,
+        errorMessage = null,
+        onToggleStatus = { _, _ -> },
+        onSetAllStatus = {},
+        onDeleteClick = {}
+    )
 }

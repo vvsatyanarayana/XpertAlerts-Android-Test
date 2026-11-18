@@ -374,3 +374,43 @@ private fun formatArchivedDate(value: String): String {
     return value
 }
 
+
+@Preview(
+    name = "Archived Alert Details",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=873dp,dpi=440"
+)
+@Composable
+private fun ArchivedAlertDetailsScreenPreview() {
+
+    val sampleAlert = ArchivedAlertUi(
+        id = "101",
+        alertId = 635,
+        subject = "System Alert - New Notification",
+        title = "XpertAlerts",
+        description = """
+            New alert received from Xpert Alerts.
+
+            Please review this alert and take the required action.
+
+            This is a sample archived alert message for preview.
+        """.trimIndent(),
+        date = "2026-10-13",
+        applicationId = 45,
+        archiveId = 101,
+        alertDefId = 1,
+        aggregateAlertId = "AGG-635"
+    )
+
+    ArchivedAlertDetailsScreen(
+        alert = sampleAlert,
+        onBackClick = {},
+        onDeleteClick = {},
+        isDeleting = false,
+        deleteError = null,
+        onClearDeleteError = {}
+    )
+}
+
+

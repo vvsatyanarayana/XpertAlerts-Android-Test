@@ -70,7 +70,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import androidx.compose.ui.platform.LocalInspectionMode
 @Composable
 fun AlertDetailScreen(
     alert: AlertDto,
@@ -80,6 +80,7 @@ fun AlertDetailScreen(
     sessionId: String,
     onActionSuccess: () -> Unit
 ) {
+    val isPreview = LocalInspectionMode.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -187,6 +188,7 @@ fun AlertDetailScreen(
 
     // Load every action configured by the server, as the old app did.
     LaunchedEffect(
+
         alert.id,
         alert.alertDefId,
         alert.applicationId,
@@ -194,12 +196,11 @@ fun AlertDetailScreen(
         sessionId
     ) {
 
-
-
-
-
-
-
+        if (isPreview) {
+            dynamicActions = emptyList()
+            isLoadingActions = false
+            return@LaunchedEffect
+        }
 
         isLoadingActions = true
 
@@ -440,38 +441,65 @@ fun AlertDetailScreen(
                         modifier = Modifier.height(12.dp)
                     )
 
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp, max = 480.dp),
-                        factory = { viewContext ->
-                            WebView(viewContext).apply {
-                                settings.javaScriptEnabled = true
-                                webViewClient = WebViewClient()
-                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                                tag = messageHtml
-                                loadDataWithBaseURL(
-                                    null,
-                                    messageHtml,
-                                    "text/html",
-                                    "UTF-8",
-                                    null
-                                )
+
+                    if (isPreview) {
+
+                        // Static message for Android Studio Preview
+                        Text(
+                            text = alert.message
+                                ?.replace(Regex("<[^>]*>"), "")
+                                ?.ifBlank {
+                                    "No message is available for this alert."
+                                }
+                                ?: "No message is available for this alert.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp),
+                            fontSize = 14.sp,
+                            color = TextDark
+                        )
+
+                    } else {
+
+                        // Actual WebView for the running application
+                        AndroidView(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 480.dp),
+                            factory = { viewContext ->
+                                WebView(viewContext).apply {
+                                    settings.javaScriptEnabled = true
+                                    webViewClient = WebViewClient()
+                                    setBackgroundColor(
+                                        android.graphics.Color.TRANSPARENT
+                                    )
+                                    tag = messageHtml
+
+                                    loadDataWithBaseURL(
+                                        null,
+                                        messageHtml,
+                                        "text/html",
+                                        "UTF-8",
+                                        null
+                                    )
+                                }
+                            },
+                            update = { webView ->
+                                if (webView.tag != messageHtml) {
+                                    webView.tag = messageHtml
+
+                                    webView.loadDataWithBaseURL(
+                                        null,
+                                        messageHtml,
+                                        "text/html",
+                                        "UTF-8",
+                                        null
+                                    )
+                                }
                             }
-                        },
-                        update = { webView ->
-                            if (webView.tag != messageHtml) {
-                                webView.tag = messageHtml
-                                webView.loadDataWithBaseURL(
-                                    null,
-                                    messageHtml,
-                                    "text/html",
-                                    "UTF-8",
-                                    null
-                                )
-                            }
-                        }
-                    )
+                        )
+                    }
+
                 }
             }
 
@@ -519,6 +547,7 @@ fun AlertDetailScreen(
             Spacer(
                 modifier = Modifier.height(4.dp)
             )
+
         }
     }
 
@@ -664,14 +693,23 @@ private fun DetailRow(
 )
 @Composable
 private fun AlertDetailScreenPreview() {
+
     XpertAlertsTheme {
+
         AlertDetailScreen(
             alert = AlertDto(
                 id = 635L,
                 alertId = 635,
                 subject = "System Alert",
-                message = "New alert received from Xpert Alerts.\n\n" +
-                        "Please review this alert and take the required action.",
+                message = """
+                    <html>
+                    <body>
+                        <h3>New Alert Received</h3>
+                        <p>New alert received from Xpert Alerts.</p>
+                        <p>Please review this alert and take the required action.</p>
+                    </body>
+                    </html>
+                """.trimIndent(),
                 alertSendDate = "2026-10-13",
                 applicationId = 45L,
                 alertDefId = 1,

@@ -209,14 +209,14 @@ fun ArchivedAlertsScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(220.dp),
+                                        .height(620.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = "No records found",
                                         color = TextGray,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium
+                                        fontSize = 15.sp
+
                                     )
                                 }
                             }

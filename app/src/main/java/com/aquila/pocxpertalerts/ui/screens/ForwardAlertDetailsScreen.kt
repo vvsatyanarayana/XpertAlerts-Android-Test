@@ -50,7 +50,7 @@ import com.aquila.pocxpertalerts.ui.theme.TextDark
 import com.aquila.pocxpertalerts.ui.theme.TextGray
 import com.aquila.pocxpertalerts.ui.theme.White
 import com.aquila.pocxpertalerts.ui.theme.XpertOrange
-
+import androidx.compose.ui.tooling.preview.Preview
 private val ForwardDetailsGreen = Color(0xFF008F54)
 private val ForwardDetailsBorder = Color(0xFFB8B8B8)
 
@@ -691,3 +691,65 @@ private fun <T> ForwardDetailsDropdown(
         }
     }
 }
+
+
+
+@Preview(
+    name = "Create Forward Alert",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=873dp,dpi=440"
+)
+@Composable
+private fun ForwardAlertDetailsScreenPreview() {
+
+    ForwardAlertDetailsScreen(
+        onBackClick = {},
+        onSaveClick = {},
+
+        emailFromApi = null,
+        isSaving = false,
+        saveMessage = null,
+        saveSucceeded = false,
+
+        applications = listOf(
+            ForwardApplicationOption(
+                id = "45",
+                name = "XpertAlerts"
+            ),
+            ForwardApplicationOption(
+                id = "46",
+                name = "CaterXpert"
+            ),
+            ForwardApplicationOption(
+                id = "47",
+                name = "Business Manager"
+            )
+        ),
+
+        users = listOf(
+            ForwardUserOption(
+                id = "101",
+                name = "Satyanarayana",
+                email = "satya@gmail.com"
+            ),
+            ForwardUserOption(
+                id = "102",
+                name = "Rahul Kumar",
+                email = "rahul@gmail.com"
+            ),
+            ForwardUserOption(
+                id = "103",
+                name = "Venkat",
+                email = "venkat@gmail.com"
+            )
+        ),
+
+        editDetails = null,
+
+        onApplicationSelected = {},
+        onUserSelected = {},
+        onMapClick = { _, _, _, _, _ -> }
+    )
+}
+

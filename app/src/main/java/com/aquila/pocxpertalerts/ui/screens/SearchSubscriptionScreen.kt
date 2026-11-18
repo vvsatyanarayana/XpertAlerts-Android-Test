@@ -46,7 +46,8 @@ import com.aquila.pocxpertalerts.ui.theme.SearchButtonColor
 import com.aquila.pocxpertalerts.ui.theme.SearchButtonTextColor
 import com.aquila.pocxpertalerts.ui.theme.SearchScreenBackground
 import com.aquila.pocxpertalerts.ui.theme.SearchTextColor
-
+import androidx.compose.ui.tooling.preview.Preview
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 data class ApplicationOption(
     val id: String,
     val name: String
@@ -291,6 +292,47 @@ private fun StatusOption(
             text = label,
             color = SearchTextColor,
             fontSize = 14.sp
+        )
+    }
+}
+
+@Preview(
+    name = "Search Subscription Screen",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=852dp"
+)
+@Composable
+private fun SearchSubscriptionScreenPreview() {
+    XpertAlertsTheme {
+        SearchSubscriptionScreen(
+            onBackClick = {},
+
+            onSearchClick = { _, _, _ -> },
+
+            applications = listOf(
+                ApplicationOption(
+                    id = "1",
+                    name = "XpertAlerts"
+                ),
+                ApplicationOption(
+                    id = "2",
+                    name = "CaterXpert"
+                ),
+                ApplicationOption(
+                    id = "3",
+                    name = "Business CRM"
+                )
+            ),
+
+            isApplicationsLoading = false,
+            applicationsError = null,
+
+            initialAlertName = "",
+            initialApplicationId = "0",
+            initialSearchActive = 1,
+
+            onRetryApplications = {}
         )
     }
 }

@@ -47,6 +47,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.foundation.layout.heightIn
 import com.aquila.pocxpertalerts.ui.components.SearchScreenTopBar
+import kotlinx.coroutines.flow.MutableStateFlow
 
 // ============================================================
 // SEARCH ALERTS SCREEN
@@ -61,43 +62,73 @@ fun SearchAlertsScreen(
         keyword: String,
         viewBy: String,
         application: String,
-        alertDefinition: String
+        alertDefinition: String,
+
     ) -> Unit,
-    alertsViewModel: AlertsViewModel,
+    alertsViewModel: AlertsViewModel? = null,
     userId: String,
     userTypeId: String,
     sessionId: String,
     onAlertsTabClick: () -> Unit = onBackClick,
     onSubscriptionsTabClick: () -> Unit = {},
     onForwardAlertsTabClick: () -> Unit = {},
-    onMenuTabClick: () -> Unit = onBackClick
+    onMenuTabClick: () -> Unit = onBackClick,
+    isPreview: Boolean = false
 ) {
-    val isLoading by alertsViewModel.isLoading.collectAsState()
-    val errorMessage by alertsViewModel.errorMessage.collectAsState()
-    val applications by alertsViewModel.applications.collectAsState()
-    val alertDefinitions by alertsViewModel.alertDefinitions.collectAsState()
+    // ------------------------------------------------------------
+// VIEWMODEL STATES
+// Use empty default states when displaying Android Studio Preview.
+// ------------------------------------------------------------
 
-    val isLoadingApplications by
-    alertsViewModel.isLoadingApplications.collectAsState()
+    val isLoading by (
+            alertsViewModel?.isLoading
+                ?: remember { MutableStateFlow(false) }
+            ).collectAsState()
 
-    val isLoadingDefinitions by
-    alertsViewModel.isLoadingDefinitions.collectAsState()
+    val errorMessage by (
+            alertsViewModel?.errorMessage
+                ?: remember { MutableStateFlow<String?>(null) }
+            ).collectAsState()
 
-    val dropdownErrorMessage by
-    alertsViewModel.dropdownErrorMessage.collectAsState()
+    val applications by (
+            alertsViewModel?.applications
+                ?: remember { MutableStateFlow(emptyList()) }
+            ).collectAsState()
 
-    LaunchedEffect(userId, userTypeId, sessionId) {
-        alertsViewModel.loadApplications(
-            userId = userId,
-            userTypeId = userTypeId,
-            sessionId = sessionId
-        )
+    val alertDefinitions by (
+            alertsViewModel?.alertDefinitions
+                ?: remember { MutableStateFlow(emptyList()) }
+            ).collectAsState()
+
+    val isLoadingApplications by (
+            alertsViewModel?.isLoadingApplications
+                ?: remember { MutableStateFlow(false) }
+            ).collectAsState()
+
+    val isLoadingDefinitions by (
+            alertsViewModel?.isLoadingDefinitions
+                ?: remember { MutableStateFlow(false) }
+            ).collectAsState()
+
+    val dropdownErrorMessage by (
+            alertsViewModel?.dropdownErrorMessage
+                ?: remember { MutableStateFlow<String?>(null) }
+            ).collectAsState()
+
+    LaunchedEffect(userId, userTypeId, sessionId, isPreview) {
+        if (!isPreview) {
+            alertsViewModel?.loadApplications(
+                userId = userId,
+                userTypeId = userTypeId,
+                sessionId = sessionId
+            )
+        }
     }
 
     val context = LocalContext.current.applicationContext
 
     val searchPersistence = remember(context) {
-        SearchAlertsPersistence(context)
+        if (!isPreview) SearchAlertsPersistence(context) else null
     }
 
     // Match the legacy app defaults: start date is three days ago, end date is today.
@@ -105,8 +136,22 @@ fun SearchAlertsScreen(
     val defaultEndDate = remember(userId) { formatSearchDate(daysFromToday = 0) }
 
     // Restore saved filters for the current user.
-    val initialFilters = remember(userId) {
-        searchPersistence.loadFilters(userId)
+    val initialFilters = remember(userId, isPreview) {
+        if (isPreview) {
+            SavedAlertSearchFilters(
+                keyword = "",
+                startDate = formatSearchDate(-3),
+                endDate = formatSearchDate(0),
+                viewBy = "- Select -",
+                applicationName = "- Select Application -",
+                applicationId = "",
+                alertDefinitionName = "- Select Alert Definition -",
+                alertDefinitionId = ""
+            )
+        } else {
+            searchPersistence?.loadFilters(userId)
+                ?: SavedAlertSearchFilters()
+        }
     }
 
     var keyword by rememberSaveable(userId) {
@@ -157,8 +202,10 @@ fun SearchAlertsScreen(
         alertDefinitionName,
         alertDefinitionId
     ) {
+        if (isPreview) return@LaunchedEffect
+
         if (userId.isNotBlank()) {
-            searchPersistence.saveFilters(
+            searchPersistence?.saveFilters(
                 userId = userId,
                 filters = SavedAlertSearchFilters(
                     keyword = keyword,
@@ -184,13 +231,13 @@ fun SearchAlertsScreen(
         alertDefinitionName = "- Select Alert Definition -"
         alertDefinitionId = ""
 
-        alertsViewModel.loadAlertDefinitions(
+        alertsViewModel?.loadAlertDefinitions(
             applicationId = "",
             sessionId = sessionId
         )
 
-        alertsViewModel.clearError()
-        alertsViewModel.clearDropdownError()
+        alertsViewModel?.clearError()
+        alertsViewModel?.clearDropdownError()
     }
 
     Scaffold(
@@ -328,7 +375,7 @@ fun SearchAlertsScreen(
                     alertDefinitionName = "- Select Alert Definition -"
                     alertDefinitionId = ""
 
-                    alertsViewModel.loadAlertDefinitions(
+                    alertsViewModel?.loadAlertDefinitions(
                         applicationId = applicationId,
                         sessionId = sessionId
                     )
@@ -773,15 +820,22 @@ private fun SearchAlertsScreenPreview() {
     XpertAlertsTheme {
         SearchAlertsScreen(
             onBackClick = {},
+
             onSearchClick = { _, _, _, _, _, _ -> },
-            alertsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+
+            // No ViewModel is required for Preview.
+            alertsViewModel = null,
+
             userId = "preview_user",
             userTypeId = "1",
             sessionId = "preview_session",
+
             onAlertsTabClick = {},
             onSubscriptionsTabClick = {},
             onForwardAlertsTabClick = {},
-            onMenuTabClick = {}
+            onMenuTabClick = {},
+
+            isPreview = true
         )
     }
 }

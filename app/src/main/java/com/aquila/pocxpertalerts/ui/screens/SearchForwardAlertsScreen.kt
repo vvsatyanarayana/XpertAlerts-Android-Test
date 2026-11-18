@@ -43,6 +43,8 @@ import com.aquila.pocxpertalerts.ui.theme.SearchScreenBackground
 import com.aquila.pocxpertalerts.ui.theme.SearchTextColor
 import com.aquila.pocxpertalerts.viewmodel.ForwardApplicationOption
 import com.aquila.pocxpertalerts.viewmodel.ForwardUserOption
+import androidx.compose.ui.tooling.preview.Preview
+import com.aquila.pocxpertalerts.ui.XpertAlertsTheme
 private val ForwardFieldBorder = Color(0xFFBDBDBD)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -363,3 +365,57 @@ private fun searchFieldColors() =
         unfocusedContainerColor = Color.White,
         cursorColor = SearchButtonColor
     )
+
+
+@Preview(
+    name = "Search Forward Alerts",
+    showBackground = true,
+    showSystemUi = true,
+    device = "spec:width=393dp,height=852dp"
+)
+@Composable
+private fun SearchForwardAlertsScreenPreview() {
+    XpertAlertsTheme {
+        SearchForwardAlertsScreen(
+            onBackClick = {},
+
+            onSearchClick = { _, _, _, _ -> },
+
+            applications = listOf(
+                ForwardApplicationOption(
+                    id = "1",
+                    name = "XpertAlerts"
+                ),
+                ForwardApplicationOption(
+                    id = "2",
+                    name = "CaterXpert"
+                ),
+                ForwardApplicationOption(
+                    id = "3",
+                    name = "Business CRM"
+                )
+            ),
+
+            users = listOf(
+                ForwardUserOption(
+                    id = "101",
+                    name = "John Smith"
+                ),
+                ForwardUserOption(
+                    id = "102",
+                    name = "David Wilson"
+                ),
+                ForwardUserOption(
+                    id = "103",
+                    name = "Mathew Brown"
+                )
+            ),
+
+            isLoadingApplications = false,
+            isLoadingUsers = false,
+
+            onApplicationSelected = {},
+            onResetClick = {}
+        )
+    }
+}
